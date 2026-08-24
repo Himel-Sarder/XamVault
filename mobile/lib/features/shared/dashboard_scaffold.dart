@@ -7,6 +7,8 @@ import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// The shell all three dashboards share: identity header, a courses preview and the
@@ -141,39 +143,72 @@ class IdentityCard extends ConsumerWidget {
       UserRole.admin => 'Administrator · ID ${user.userId}',
     };
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: Text(
-                _initials(user.name),
-                style: TextStyle(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
+    // The one surface in the app that carries identity rather than content, so it is
+    // the one place a gradient earns its keep. Everything a candidate has to *read*
+    // stays on a plain surface.
+    return Container(
+      decoration: BoxDecoration(
+        gradient: context.brandGradient,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white38),
+            ),
+            child: Text(
+              _initials(user.name),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user.name, style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    user.role.label.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -195,29 +230,73 @@ class CourseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Its own colour, derived from the code, so the same course looks the same
+    // everywhere and a list of six is scannable rather than six identical rows.
+    final accent = context.accents.forKey(course.courseCode);
+    final archived = !course.isActive;
+
     return Card(
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.secondaryContainer,
-          child: Icon(Icons.menu_book_outlined,
-              color: theme.colorScheme.onSecondaryContainer),
-        ),
-        title: Text(course.courseCode),
-        subtitle: Text(
-          [
-            course.courseName,
-            if (course.session != null) course.session!,
-          ].join(' · '),
-        ),
-        trailing: course.isActive
-            ? null
-            : Chip(
-                label: const Text('Archived'),
-                visualDensity: VisualDensity.compact,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          // A stripe rather than a tinted card: the colour identifies the course
+          // without washing the text it sits beside.
+          Container(width: 5, height: 72, color: accent.foreground),
+          Expanded(
+            child: ListTile(
+              onTap: onTap,
+              leading: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.container,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _shortCode(course.courseCode),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: accent.foreground,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
               ),
+              title: Text(
+                course.courseCode,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: Text(
+                [
+                  course.courseName,
+                  if (course.session != null) course.session!,
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: archived
+                  ? StatusPill(label: 'Archived', colour: context.status.neutral)
+                  : (onTap == null
+                      ? null
+                      : Icon(Icons.chevron_right,
+                          color: theme.colorScheme.onSurfaceVariant)),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// The letters a reader actually uses to tell courses apart — "CSE-301" reads as
+  /// "301" in a list where everything starts with CSE.
+  static String _shortCode(String code) {
+    final digits = RegExp(r'\d{2,}').firstMatch(code)?.group(0);
+    if (digits != null) return digits.substring(0, digits.length.clamp(0, 3));
+    final cleaned = code.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    return cleaned.isEmpty
+        ? '?'
+        : cleaned.substring(0, cleaned.length < 3 ? cleaned.length : 3).toUpperCase();
   }
 }

@@ -100,16 +100,99 @@ class StatusPalette extends ThemeExtension<StatusPalette> {
 extension StatusPaletteAccess on BuildContext {
   StatusPalette get status =>
       Theme.of(this).extension<StatusPalette>() ?? StatusPalette.light;
+
+  AccentPalette get accents =>
+      Theme.of(this).extension<AccentPalette>() ?? AccentPalette.light;
+
+  /// The brand gradient, for the few surfaces that carry identity rather than content.
+  LinearGradient get brandGradient => Theme.of(this).brightness == Brightness.light
+      ? const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1D4ED8), Color(0xFF4F46E5), Color(0xFF7C3AED)],
+        )
+      : const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E3A8A), Color(0xFF3730A3), Color(0xFF5B21B6)],
+        );
+}
+
+/// A course's own colour.
+///
+/// Everything in this app is a list — of courses, of exams inside them — and before
+/// this every row carried the same grey book icon. Colour here is not decoration: it is
+/// the fastest way to tell CSE-301 from CSE-401 at a glance, and it stays with a course
+/// wherever it appears, so the association is learnable rather than random.
+///
+/// Derived from the course code, so it is stable without storing anything: the same
+/// course is the same colour on every device, for every user, forever.
+@immutable
+class AccentPalette extends ThemeExtension<AccentPalette> {
+  const AccentPalette({required this.accents});
+
+  final List<StatusColor> accents;
+
+  /// Eight hues, evenly spread and matched for weight, so no course looks louder than
+  /// its neighbour. Deliberately excludes red: red means refusal elsewhere in the app,
+  /// and a course is not an error.
+  static const light = AccentPalette(accents: [
+    StatusColor(foreground: Color(0xFF1D4ED8), container: Color(0xFFDCE7FE)), // blue
+    StatusColor(foreground: Color(0xFF0E7490), container: Color(0xFFCFF1F7)), // cyan
+    StatusColor(foreground: Color(0xFF047857), container: Color(0xFFCFF0E2)), // emerald
+    StatusColor(foreground: Color(0xFF6D28D9), container: Color(0xFFE9DDFD)), // violet
+    StatusColor(foreground: Color(0xFFB45309), container: Color(0xFFFCEBCB)), // amber
+    StatusColor(foreground: Color(0xFFBE185D), container: Color(0xFFFBDCE9)), // rose
+    StatusColor(foreground: Color(0xFF4338CA), container: Color(0xFFE0E0FC)), // indigo
+    StatusColor(foreground: Color(0xFF15803D), container: Color(0xFFD6F0DA)), // green
+  ]);
+
+  static const dark = AccentPalette(accents: [
+    StatusColor(foreground: Color(0xFF9DBBFB), container: Color(0xFF16294F)),
+    StatusColor(foreground: Color(0xFF87D6E8), container: Color(0xFF0C3742)),
+    StatusColor(foreground: Color(0xFF7FD8B0), container: Color(0xFF0C3A2C)),
+    StatusColor(foreground: Color(0xFFC4A9F8), container: Color(0xFF2C1B52)),
+    StatusColor(foreground: Color(0xFFEFC377), container: Color(0xFF44300A)),
+    StatusColor(foreground: Color(0xFFF3A8C6), container: Color(0xFF4A1029)),
+    StatusColor(foreground: Color(0xFFAEAAF7), container: Color(0xFF211E56)),
+    StatusColor(foreground: Color(0xFF8DD69F), container: Color(0xFF10381F)),
+  ]);
+
+  /// Stable across runs and devices.
+  ///
+  /// `String.hashCode` is explicitly not guaranteed to be stable between Dart releases,
+  /// so a course would silently change colour on an upgrade. This walks the bytes
+  /// instead, which cannot drift.
+  StatusColor forKey(String key) {
+    var hash = 2166136261;
+    for (final unit in key.trim().toUpperCase().codeUnits) {
+      hash = (hash ^ unit) * 16777619 & 0xFFFFFFFF;
+    }
+    return accents[hash % accents.length];
+  }
+
+  @override
+  AccentPalette copyWith({List<StatusColor>? accents}) =>
+      AccentPalette(accents: accents ?? this.accents);
+
+  @override
+  AccentPalette lerp(covariant AccentPalette? other, double t) {
+    if (other == null || other.accents.length != accents.length) return this;
+    return AccentPalette(accents: [
+      for (var i = 0; i < accents.length; i++)
+        StatusColor.lerp(accents[i], other.accents[i], t),
+    ]);
+  }
 }
 
 /// Material 3 theme, defined once for both light and dark.
 class AppTheme {
   const AppTheme._();
 
-  /// A deep institutional blue. Universities are not consumer products: the palette
-  /// should read as considered and calm, and stay out of the way of a paper someone is
-  /// being examined on.
-  static const Color _seed = Color(0xFF0F4C81);
+  /// A confident blue rather than a navy. The previous seed was so dark it read as
+  /// grey at small sizes, which made the whole app look washed out; this one carries
+  /// the brand at chip and icon size while still belonging in an institution.
+  static const Color _seed = Color(0xFF1D4ED8);
 
   // A single scale, so nothing is rounded by eye at a call site.
   static const double _radiusField = 12;
@@ -129,7 +212,10 @@ class AppTheme {
       useMaterial3: true,
       scaffoldBackgroundColor: scheme.surface,
       textTheme: text,
-      extensions: [isLight ? StatusPalette.light : StatusPalette.dark],
+      extensions: [
+        isLight ? StatusPalette.light : StatusPalette.dark,
+        isLight ? AccentPalette.light : AccentPalette.dark,
+      ],
 
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,

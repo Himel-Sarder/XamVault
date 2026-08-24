@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/config/app_config.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -50,9 +51,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.school_outlined,
-                        size: 64, color: theme.colorScheme.primary),
-                    const SizedBox(height: 16),
+                    Center(
+                      child: Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          gradient: context.brandGradient,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(
+                          Icons.school_rounded,
+                          size: 44,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       AppConfig.appName,
                       textAlign: TextAlign.center,

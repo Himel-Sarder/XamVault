@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/features/student/widgets/student_exam_tile.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
+import 'package:uniexam/models/course.dart';
+import 'package:uniexam/features/shared/dashboard_scaffold.dart';
 import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/student_exam.dart';
 import 'package:uniexam/widgets/status_pill.dart';
@@ -121,6 +123,43 @@ void main() {
         lessThan(0.03),
         reason: 'surface should read as neutral, not blue',
       );
+    });
+  });
+
+  group('a course carries its own colour', () {
+    test('the same code always gets the same accent', () {
+      const palette = AccentPalette.light;
+      expect(palette.forKey('CSE-301'), palette.forKey('CSE-301'));
+      // Case and stray whitespace are the same course to a human, so they must be the
+      // same colour too.
+      expect(palette.forKey('cse-301'), palette.forKey(' CSE-301 '));
+    });
+
+    test('different courses are told apart', () {
+      const palette = AccentPalette.light;
+      final codes = ['CSE-301', 'CSE-401', 'EEE-201', 'MTH-101', 'PHY-105'];
+      final chosen = codes.map(palette.forKey).toSet();
+      // Eight hues and five courses: collisions are possible but all-identical is not
+      // an acceptable outcome for a list a teacher scans.
+      expect(chosen.length, greaterThan(1));
+    });
+
+    test('no accent borrows the colour of refusal', () {
+      // Red means rejected or cancelled. A course is not an error.
+      for (final accent in AccentPalette.light.accents) {
+        expect(accent.container, isNot(StatusPalette.light.danger.container));
+      }
+    });
+
+    testWidgets('a course tile shows its accent, not a shared grey', (tester) async {
+      const a = Course(id: 1, courseCode: 'CSE-301', courseName: 'DBMS', createdBy: 2);
+      const b = Course(id: 2, courseCode: 'EEE-201', courseName: 'Circuits', createdBy: 2);
+
+      await tester.pumpWidget(wrap(const CourseTile(course: a)));
+      expect(find.text('301'), findsOneWidget);
+
+      await tester.pumpWidget(wrap(const CourseTile(course: b)));
+      expect(find.text('201'), findsOneWidget);
     });
   });
 }

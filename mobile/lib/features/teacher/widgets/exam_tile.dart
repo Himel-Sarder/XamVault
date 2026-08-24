@@ -71,16 +71,68 @@ class ExamTile extends StatelessWidget {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${exam.durationMinutes} min  ·  '
-                '${exam.questionCount} question${exam.questionCount == 1 ? '' : 's'}  ·  '
-                '${exam.totalMarks} mark${exam.totalMarks == 1 ? '' : 's'}',
-                style: theme.textTheme.bodySmall,
+              const SizedBox(height: 10),
+              // Three separate facts, so they get three marks rather than one grey
+              // sentence a reader has to parse word by word.
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _Fact(
+                    icon: Icons.schedule,
+                    label: '${exam.durationMinutes} min',
+                    colour: context.status.info,
+                  ),
+                  _Fact(
+                    icon: Icons.help_outline,
+                    label: '${exam.questionCount} '
+                        'question${exam.questionCount == 1 ? '' : 's'}',
+                    colour: context.status.neutral,
+                  ),
+                  _Fact(
+                    icon: Icons.workspace_premium_outlined,
+                    label: '${exam.totalMarks} mark${exam.totalMarks == 1 ? '' : 's'}',
+                    colour: context.status.success,
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One small fact about an exam: an icon, a word, and a tint.
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.label, required this.colour});
+
+  final IconData icon;
+  final String label;
+  final StatusColor colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colour.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colour.foreground),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colour.foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }
