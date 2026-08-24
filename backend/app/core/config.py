@@ -98,7 +98,13 @@ class Settings(BaseSettings):
         return self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
     def validate_for_runtime(self) -> None:
-        """Fail loudly rather than serve production traffic with a known signing key."""
+        """Fail loudly rather than serve production traffic with a known signing key.
+
+        ``CORS_ORIGINS`` is deliberately *not* required. Empty means no browser origin is
+        allowed, which is the safe default — a native mobile client sends no ``Origin``
+        header and needs none. Demanding a value here would block a legitimate
+        mobile-only deployment for no security gain.
+        """
         if not self.is_production:
             return
         problems: list[str] = []
@@ -108,8 +114,6 @@ class Settings(BaseSettings):
             problems.append("JWT_SECRET_KEY must be at least 32 characters")
         if self.DATABASE_URL.startswith("sqlite"):
             problems.append("DATABASE_URL must point at PostgreSQL")
-        if not self.cors_origins:
-            problems.append("CORS_ORIGINS must list the allowed client origins")
         if problems:
             raise RuntimeError(
                 "Refusing to start in production:\n  - " + "\n  - ".join(problems)

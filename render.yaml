@@ -1,12 +1,21 @@
-# Render Blueprint. Creates the API service and its PostgreSQL instance together.
+# Render Blueprint.
 #
-# Values marked `sync: false` are entered in the Render dashboard and never committed.
-
-databases:
-  - name: uniexam-db
-    databaseName: uniexam
-    user: uniexam
-    plan: free
+# This deploys the API against the PostgreSQL instance you ALREADY have — it does not
+# declare a `databases:` block, because that would provision a second one and leave the
+# existing schema and data orphaned.
+#
+# After creating the Blueprint, set the values marked `sync: false` in the dashboard:
+#
+#   DATABASE_URL           the *Internal* Database URL of your existing instance.
+#                          Internal, not External: the API runs inside Render, so the
+#                          internal address is faster and does not consume an external
+#                          connection slot.
+#   FIRST_ADMIN_PASSWORD   the password for the bootstrap admin account.
+#   CORS_ORIGINS           only needed for Flutter Web. A native Android build sends no
+#                          Origin header, so it can be left empty for mobile-only use.
+#
+# If you would rather start from a clean database, add a `databases:` block and point
+# DATABASE_URL at it with `fromDatabase` instead of `sync: false`.
 
 services:
   - type: web
@@ -20,43 +29,25 @@ services:
       - key: ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: uniexam-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
-        generateValue: true      # Render generates a strong secret on first deploy
+        # Generated once, on first deploy, and kept thereafter. Changing it invalidates
+        # every issued token, which is the correct behaviour but logs everyone out.
+        generateValue: true
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "30"
       - key: REFRESH_TOKEN_EXPIRE_DAYS
         value: "7"
+      - key: UNIVERSITY_NAME
+        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: FIRST_ADMIN_USER_ID
         value: admin
       - key: FIRST_ADMIN_PASSWORD
         sync: false
-
-  # Backstop for attempts whose time ran out while nobody was looking (§42). The app and
-  # the read path already auto-submit; this catches the device that never came back.
-  - type: cron
-    name: uniexam-sweep-attempts
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    plan: free
-    schedule: "*/5 * * * *"
-    dockerCommand: python -m app.utils.sweep_attempts
-    envVars:
-      - key: ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: uniexam-db
-          property: connectionString
-      - key: JWT_SECRET_KEY
-        fromService:
-          type: web
-          name: uniexam-api
-          envVarKey: JWT_SECRET_KEY
-      - key: CORS_ORIGINS
-        sync: false
+      # Render's free instances allow few connections; keep the pool well under the cap.
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
