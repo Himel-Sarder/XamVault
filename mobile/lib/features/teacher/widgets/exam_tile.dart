@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/models/exam.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 
 /// Colour-coded status chip. Draft and Published read very differently to a teacher, so
 /// the difference is carried by colour as well as by the word.
@@ -10,28 +12,18 @@ class ExamStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (background, foreground) = switch (status) {
-      ExamStatus.draft => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      ExamStatus.published => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      ExamStatus.running => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      ExamStatus.completed => (scheme.secondaryContainer, scheme.onSecondaryContainer),
-      ExamStatus.cancelled => (scheme.errorContainer, scheme.onErrorContainer),
+    final palette = context.status;
+    final colour = switch (status) {
+      // Not live yet, so it stays quiet.
+      ExamStatus.draft => palette.neutral,
+      // Live and visible to students.
+      ExamStatus.published => palette.info,
+      // Happening right now — the one a teacher should be able to spot at a glance.
+      ExamStatus.running => palette.success,
+      ExamStatus.completed => palette.neutral,
+      ExamStatus.cancelled => palette.danger,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-      ),
-    );
+    return StatusPill(label: status.label, colour: colour);
   }
 }
 

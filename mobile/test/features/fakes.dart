@@ -102,7 +102,7 @@ class FakeAuthRepository implements AuthRepository {
 class FakeCourseRepository implements CourseRepository {
   // Copied, not shared: `create` appends, and a const literal cannot be added to.
   FakeCourseRepository({List<Course>? courses})
-      : courses = [...?courses ?? _defaultCourses];
+      : courses = [...(courses ?? _defaultCourses)];
 
   static const _defaultCourses = [
     Course(
