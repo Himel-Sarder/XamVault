@@ -8,6 +8,7 @@ class Routes {
   static const splash = '/splash';
   static const login = '/login';
   static const profile = '/profile';
+  static const changePassword = '/profile/password';
 
   /// Shared by every role — what a tap leads to depends on who is reading.
   static const notifications = '/notifications';
@@ -16,6 +17,12 @@ class Routes {
   static const teacherCourses = '/teacher/courses';
 
   static const teacherQuestionBank = '/teacher/question-bank';
+  static const teacherCourseCreate = '/teacher/courses/new';
+
+  static String teacherCourseEdit(int courseId) =>
+      '/teacher/courses/$courseId/edit';
+  static String teacherCourseEnrollments(int courseId) =>
+      '/teacher/courses/$courseId/enrollments';
 
   static String teacherCourse(int courseId) => '/teacher/courses/$courseId';
   static String teacherExamCreate(int courseId) => '/teacher/courses/$courseId/exams/new';
@@ -44,6 +51,14 @@ class Routes {
       '/teacher/exams/$examId/grading/$attemptId';
 
   static const adminHome = '/admin';
+  static const adminDepartments = '/admin/departments';
+  static const adminUsers = '/admin/users';
+  static const adminCourses = '/admin/courses';
+  static const adminCourseCreate = '/admin/courses/new';
+
+  static String adminCourseEdit(int courseId) => '/admin/courses/$courseId/edit';
+  static String adminCourseEnrollments(int courseId) =>
+      '/admin/courses/$courseId/enrollments';
 
   static String homeFor(UserRole role) => switch (role) {
         UserRole.teacher => teacherHome,
@@ -74,7 +89,9 @@ String? resolveRedirect(AuthState auth, String location) {
   if (location == Routes.splash || location == Routes.login) return home;
 
   // Shared by every role.
-  if (location == Routes.profile || location == Routes.notifications) return null;
+  if (location.startsWith(Routes.profile) || location == Routes.notifications) {
+    return null;
+  }
 
   // A student typing /teacher/... is sent back to their own area. The backend would
   // refuse the data anyway; this stops the app from rendering an empty teacher shell.

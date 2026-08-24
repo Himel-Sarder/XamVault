@@ -4,8 +4,10 @@ import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/core/token_manager.dart';
 import 'package:uniexam/core/token_store.dart';
 import 'package:uniexam/providers/auth_provider.dart';
+import 'package:uniexam/repositories/admin_repository.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
+import 'package:uniexam/repositories/department_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
 import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
@@ -56,4 +58,12 @@ final questionBankRepositoryProvider = Provider<QuestionBankRepository>(
 
 final notificationRepositoryProvider = Provider<NotificationRepository>(
   (ref) => NotificationRepository(ref.watch(apiClientProvider)),
+);
+
+final departmentRepositoryProvider = Provider<DepartmentRepository>(
+  (ref) => DepartmentRepository(ref.watch(apiClientProvider)),
+);
+
+final adminRepositoryProvider = Provider<AdminRepository>(
+  (ref) => AdminRepository(ref.watch(apiClientProvider)),
 );

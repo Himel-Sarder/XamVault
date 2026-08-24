@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.core.deps import CurrentUser, DbSession, TeacherUser
 from app.schemas.common import Page, PageParams
 from app.schemas.course import (
+    BulkEnrollmentCreate,
+    BulkEnrollmentResponse,
     CourseCreate,
     CourseResponse,
     CourseUpdate,
@@ -79,6 +81,22 @@ def enroll_student(
     course_id: int, payload: EnrollmentCreate, current_user: TeacherUser, db: DbSession
 ) -> object:
     return CourseService(db).enroll(course_id, payload, current_user)
+
+
+@router.post(
+    "/{course_id}/enrollments/bulk",
+    response_model=BulkEnrollmentResponse,
+    summary="Enrol a roll list (course owner)",
+)
+def enroll_students_bulk(
+    course_id: int,
+    payload: BulkEnrollmentCreate,
+    current_user: TeacherUser,
+    db: DbSession,
+) -> object:
+    """200, not 201: a batch can legitimately create nothing at all -- every id already
+    enrolled, say -- and the caller reads what happened from the body either way."""
+    return CourseService(db).enroll_bulk(course_id, payload.student_user_ids, current_user)
 
 
 @router.delete(

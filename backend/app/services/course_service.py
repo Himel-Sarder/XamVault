@@ -20,7 +20,15 @@ from app.models.user import User
 from app.repositories.course_repository import CourseRepository
 from app.repositories.department_repository import DepartmentRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.course import CourseCreate, CourseUpdate, EnrollmentCreate
+from app.schemas.course import (
+    BulkEnrollmentResponse,
+    CourseCreate,
+    CourseUpdate,
+    EnrollmentCreate,
+    SkippedEnrolment,
+    SkipReason,
+)
+from app.schemas.user import UserSummary
 
 
 class CourseService:
@@ -126,6 +134,57 @@ class CourseService:
         # Re-read so the response carries the eagerly loaded student summary.
         self.db.refresh(enrollment, ["student"])
         return enrollment
+
+    def enroll_bulk(
+        self, course_id: int, student_user_ids: list[str], actor: User
+    ) -> BulkEnrollmentResponse:
+        """Enrol a whole roll list, reporting each id that produced no place.
+
+        The batch commits once, so nothing is left half-written. What it does *not* do
+        is abort: an unknown or duplicate id is an ordinary outcome for a pasted list,
+        and refusing the other fifty-nine names over one typo would help nobody.
+        """
+        course = self._get_manageable(course_id, actor)
+
+        # Preserve the order the teacher supplied while collapsing repeats, so the
+        # report reads in the same order as the list they pasted.
+        wanted = list(dict.fromkeys(uid.strip() for uid in student_user_ids if uid.strip()))
+
+        found = self.users.get_many_by_login_id(wanted)
+        candidates = [
+            user
+            for user in (found.get(uid) for uid in wanted)
+            if user is not None and user.role == UserRole.STUDENT and user.is_active
+        ]
+        already = self.courses.enrolled_student_ids(
+            course.id, [user.id for user in candidates]
+        )
+
+        enrolled: list[User] = []
+        skipped: list[SkippedEnrolment] = []
+        for user_id in wanted:
+            user = found.get(user_id)
+            if user is None:
+                reason: SkipReason = "not_found"
+            elif user.role != UserRole.STUDENT:
+                reason = "not_a_student"
+            elif not user.is_active:
+                reason = "deactivated"
+            elif user.id in already:
+                reason = "already_enrolled"
+            else:
+                self.courses.add_enrollment(
+                    CourseEnrollment(course_id=course.id, student_id=user.id)
+                )
+                enrolled.append(user)
+                continue
+            skipped.append(SkippedEnrolment(student_user_id=user_id, reason=reason))
+
+        self.db.commit()
+        return BulkEnrollmentResponse(
+            enrolled=[UserSummary.model_validate(user) for user in enrolled],
+            skipped=skipped,
+        )
 
     def unenroll(self, course_id: int, student_id: int, actor: User) -> None:
         self._get_manageable(course_id, actor)

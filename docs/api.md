@@ -305,6 +305,34 @@ one that does not exist — learning that a mark exists but is being withheld is
 disclosure. Publishing is one transaction over every pending result for the exam;
 publishing twice returns `409 nothing_to_publish`.
 
+## 2b. Bulk enrolment
+
+`POST /courses/{course_id}/enrollments/bulk` — course owner or admin.
+
+```json
+{ "student_user_ids": ["20261234", "20261235", "ghost-id"] }
+```
+
+```json
+{
+  "enrolled": [{ "id": 80, "user_id": "20261234", "name": "Demo Student", "role": "student" }],
+  "skipped": [{ "student_user_id": "ghost-id", "reason": "not_found" }]
+}
+```
+
+`reason` is one of `not_found`, `not_a_student`, `deactivated`, `already_enrolled`.
+
+Two things distinguish it from `POST /exams/{id}/join-requests/approve-all`, which is
+all-or-nothing. First, its input is a roll list a human typed or pasted, so a bad entry
+is expected rather than exceptional; refusing fifty-nine good ids over one typo would
+help nobody. Second, the caller needs to know *which* ids failed — a bare count sends a
+teacher back to compare two lists by eye, which is the work the batch was meant to save.
+
+The whole batch still commits once, so nothing is left half-written, and 200 is returned
+even when nothing was created: an all-duplicate list is a legitimate outcome, not an
+error. At most 200 ids per request; repeats within one list are collapsed before any
+lookup, so a duplicate is not reported as "already enrolled".
+
 ## 3. Planned surface (later phases)
 
 ```

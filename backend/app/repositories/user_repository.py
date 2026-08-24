@@ -38,6 +38,19 @@ class UserRepository:
             select(User).where(User.user_id == login_id)
         ).scalar_one_or_none()
 
+    def get_many_by_login_id(self, login_ids: list[str]) -> dict[str, User]:
+        """One query for a whole roll list, keyed by login id.
+
+        Calling :meth:`get_by_login_id` in a loop would issue one round trip per row,
+        which a two-hundred-name paste can ill afford.
+        """
+        if not login_ids:
+            return {}
+        rows = self.db.execute(
+            select(User).where(User.user_id.in_(login_ids))
+        ).scalars().all()
+        return {user.user_id: user for user in rows}
+
     def get_by_email(self, email: str) -> User | None:
         return self.db.execute(
             select(User).where(User.email == email)

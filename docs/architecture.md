@@ -151,8 +151,8 @@ Config comes from environment variables only (`DATABASE_URL`, `JWT_SECRET_KEY`,
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Foundation: FastAPI, SQLAlchemy, Alembic, JWT, RBAC, Flutter shell, login, dashboards | **done** |
-| 2 | Auth hardening: refresh rotation, password change, admin user management | partly in 1 |
-| 3 | Departments, courses, enrollment (full CRUD + bulk enrol) | models in 1 |
+| 2 | Auth hardening: refresh rotation, password change, admin user management | **done** |
+| 3 | Departments, courses, enrollment (full CRUD + bulk enrol) | **done** |
 | 4 | Exam creation, settings, publish validation, snapshot freezing | **done** |
 | 5 | Question builder — all five types, with validated image upload | **done** |
 | 6 | Question bank — reuse, search, safe editing | **done** |
@@ -163,7 +163,8 @@ Config comes from environment variables only (`DATABASE_URL`, `JWT_SECRET_KEY`,
 | 11 | Per-student question and answer randomisation | **done** |
 | 12 | Android secure exam mode (Kotlin) | **done** — device behaviour untested on hardware |
 | 13 | MCQ grading against the frozen snapshot | **done** |
-| 14–15 | Short-answer and code grading | planned |
+| 14 | Short-answer grading — manual, against the frozen snapshot | **done** |
+| 15 | Code grading | manual marking **done**; sandboxed execution not built (§23) |
 | 16 | Results, with teacher-controlled release | **done** |
 | 17 | Analytics — cohort, distribution, per-question accuracy | **done** |
 | 18 | PDF and Excel export | **done** |

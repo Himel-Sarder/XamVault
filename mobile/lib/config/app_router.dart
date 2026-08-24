@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/features/auth/login_screen.dart';
+import 'package:uniexam/features/shared/change_password_screen.dart';
 import 'package:uniexam/features/shared/courses_screen.dart';
 import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/features/shared/profile_screen.dart';
@@ -15,6 +16,10 @@ import 'package:uniexam/features/student/student_dashboard_screen.dart';
 import 'package:uniexam/features/student/student_exam_detail_screen.dart';
 import 'package:uniexam/features/teacher/admin_dashboard_screen.dart';
 import 'package:uniexam/features/teacher/course_detail_screen.dart';
+import 'package:uniexam/features/teacher/course_form_screen.dart';
+import 'package:uniexam/features/teacher/departments_screen.dart';
+import 'package:uniexam/features/teacher/enrollments_screen.dart';
+import 'package:uniexam/features/teacher/users_screen.dart';
 import 'package:uniexam/features/teacher/exam_detail_screen.dart';
 import 'package:uniexam/features/teacher/exam_form_screen.dart';
 import 'package:uniexam/features/teacher/analytics_screen.dart';
@@ -42,7 +47,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (_, _) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
-      GoRoute(path: Routes.profile, builder: (_, _) => const ProfileScreen()),
+      GoRoute(
+        path: Routes.profile,
+        builder: (_, _) => const ProfileScreen(),
+        routes: [
+          GoRoute(
+            path: 'password',
+            builder: (_, _) => const ChangePasswordScreen(),
+          ),
+        ],
+      ),
       GoRoute(
         path: Routes.notifications,
         builder: (_, _) => const NotificationsScreen(),
@@ -55,6 +69,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'courses',
             builder: (_, _) => const CoursesScreen(title: 'My Courses'),
             routes: [
+              // Declared before ':courseId' so "new" is never parsed as an id.
+              GoRoute(path: 'new', builder: (_, _) => const CourseFormScreen()),
               GoRoute(
                 path: ':courseId',
                 builder: (_, state) => CourseDetailScreen(
@@ -64,6 +80,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'exams/new',
                     builder: (_, state) => ExamFormScreen(
+                      courseId: int.parse(state.pathParameters['courseId']!),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'edit',
+                    builder: (_, state) => CourseFormScreen(
+                      courseId: int.parse(state.pathParameters['courseId']!),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'enrollments',
+                    builder: (_, state) => EnrollmentsScreen(
                       courseId: int.parse(state.pathParameters['courseId']!),
                     ),
                   ),
@@ -173,7 +201,33 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: Routes.adminHome, builder: (_, _) => const AdminDashboardScreen()),
+      GoRoute(
+        path: Routes.adminHome,
+        builder: (_, _) => const AdminDashboardScreen(),
+        routes: [
+          GoRoute(path: 'departments', builder: (_, _) => const DepartmentsScreen()),
+          GoRoute(path: 'users', builder: (_, _) => const UsersScreen()),
+          GoRoute(
+            path: 'courses',
+            builder: (_, _) => const CoursesScreen(title: 'All Courses'),
+            routes: [
+              GoRoute(path: 'new', builder: (_, _) => const CourseFormScreen()),
+              GoRoute(
+                path: ':courseId/edit',
+                builder: (_, state) => CourseFormScreen(
+                  courseId: int.parse(state.pathParameters['courseId']!),
+                ),
+              ),
+              GoRoute(
+                path: ':courseId/enrollments',
+                builder: (_, state) => EnrollmentsScreen(
+                  courseId: int.parse(state.pathParameters['courseId']!),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   );
 });

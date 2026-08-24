@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.models.enums import UserRole
+
 
 def test_teacher_creates_a_course_and_owns_it(client, api, auth_headers, teacher, department):
     response = client.post(
@@ -162,3 +164,133 @@ def test_unenrolling_removes_access(
     )
     assert response.status_code == 204
     assert client.get(f"{api}/courses", headers=auth_headers(student)).json()["total"] == 0
+
+
+# --------------------------------------------------------------- bulk enrolment
+
+
+def test_bulk_enrolment_admits_a_whole_roll_list(
+    client, api, auth_headers, teacher, make_user, make_course
+):
+    course = make_course(teacher)
+    students = [make_user(UserRole.STUDENT) for _ in range(3)]
+
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(teacher),
+        json={"student_user_ids": [s.user_id for s in students]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["user_id"] for item in body["enrolled"]] == [s.user_id for s in students]
+    assert body["skipped"] == []
+
+    listing = client.get(f"{api}/courses/{course.id}/enrollments", headers=auth_headers(teacher))
+    assert len(listing.json()) == 3
+
+
+def test_one_bad_id_does_not_cost_the_rest_their_places(
+    client, api, auth_headers, teacher, student, make_course
+):
+    """The whole point of the batch: a typo is reported, not fatal."""
+    course = make_course(teacher)
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(teacher),
+        json={"student_user_ids": ["nosuchstudent", student.user_id]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["user_id"] for item in body["enrolled"]] == [student.user_id]
+    assert body["skipped"] == [
+        {"student_user_id": "nosuchstudent", "reason": "not_found"}
+    ]
+
+
+def test_each_kind_of_skip_is_named(
+    client, api, auth_headers, teacher, other_teacher, student, make_user, make_course, enroll
+):
+    """A teacher fixing a list needs to know which id failed and why, not just a count."""
+    course = make_course(teacher)
+    seated = make_user(UserRole.STUDENT)
+    enroll(course, seated)
+    deactivated = make_user(UserRole.STUDENT, is_active=False)
+
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(teacher),
+        json={
+            "student_user_ids": [
+                "ghost",
+                other_teacher.user_id,
+                deactivated.user_id,
+                seated.user_id,
+                student.user_id,
+            ]
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["user_id"] for item in body["enrolled"]] == [student.user_id]
+    assert body["skipped"] == [
+        {"student_user_id": "ghost", "reason": "not_found"},
+        {"student_user_id": other_teacher.user_id, "reason": "not_a_student"},
+        {"student_user_id": deactivated.user_id, "reason": "deactivated"},
+        {"student_user_id": seated.user_id, "reason": "already_enrolled"},
+    ]
+
+
+def test_a_repeated_id_enrols_once(
+    client, api, auth_headers, teacher, student, make_course
+):
+    course = make_course(teacher)
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(teacher),
+        json={"student_user_ids": [student.user_id, student.user_id]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["enrolled"]) == 1
+    # Collapsed on the way in, so the repeat is not reported as "already enrolled".
+    assert body["skipped"] == []
+
+    listing = client.get(f"{api}/courses/{course.id}/enrollments", headers=auth_headers(teacher))
+    assert len(listing.json()) == 1
+
+
+def test_bulk_enrolment_respects_course_ownership(
+    client, api, auth_headers, other_teacher, student, teacher, make_course
+):
+    course = make_course(teacher)
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(other_teacher),
+        json={"student_user_ids": [student.user_id]},
+    )
+    # 404, not 403: whether course 42 exists is itself none of their business.
+    assert response.status_code == 404
+
+
+def test_a_student_cannot_enrol_anyone(
+    client, api, auth_headers, student, other_student, teacher, make_course
+):
+    course = make_course(teacher)
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(student),
+        json={"student_user_ids": [other_student.user_id]},
+    )
+    assert response.status_code == 403
+
+
+def test_an_oversized_batch_is_refused(
+    client, api, auth_headers, teacher, make_course
+):
+    course = make_course(teacher)
+    response = client.post(
+        f"{api}/courses/{course.id}/enrollments/bulk",
+        headers=auth_headers(teacher),
+        json={"student_user_ids": [f"s{n}" for n in range(201)]},
+    )
+    assert response.status_code == 422

@@ -1,23 +1,27 @@
-import 'package:uniexam/core/api_exception.dart';
-import 'package:uniexam/core/exam_security.dart';
-import 'package:uniexam/models/auth_tokens.dart';
-import 'package:uniexam/models/course.dart';
-import 'package:uniexam/models/department.dart';
 import 'dart:async';
 
+import 'package:uniexam/core/api_exception.dart';
+import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/analytics.dart';
-import 'package:uniexam/models/bank_question.dart';
 import 'package:uniexam/models/attempt.dart';
+import 'package:uniexam/models/auth_tokens.dart';
+import 'package:uniexam/models/bank_question.dart';
+import 'package:uniexam/models/course.dart';
+import 'package:uniexam/models/department.dart';
+import 'package:uniexam/models/enrollment.dart';
 import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/exam_result.dart';
 import 'package:uniexam/models/join_request.dart';
 import 'package:uniexam/models/notification.dart';
-import 'package:uniexam/models/student_exam.dart';
-import 'package:uniexam/models/question.dart';
 import 'package:uniexam/models/paged.dart';
+import 'package:uniexam/models/question.dart';
+import 'package:uniexam/models/student_exam.dart';
 import 'package:uniexam/models/user.dart';
+import 'package:uniexam/providers/admin_provider.dart';
+import 'package:uniexam/repositories/admin_repository.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
+import 'package:uniexam/repositories/department_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
 import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
@@ -82,15 +86,23 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<void> logout(String refreshToken) async => logoutCalls++;
 
+  /// Every change the screen actually sent, so a test can prove nothing went out
+  /// when the form should have caught the problem itself.
+  final List<(String, String)> passwordChanges = [];
+
   @override
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
-  }) async {}
+  }) async {
+    passwordChanges.add((currentPassword, newPassword));
+  }
 }
 
 class FakeCourseRepository implements CourseRepository {
-  FakeCourseRepository({List<Course>? courses}) : courses = courses ?? _defaultCourses;
+  // Copied, not shared: `create` appends, and a const literal cannot be added to.
+  FakeCourseRepository({List<Course>? courses})
+      : courses = [...?courses ?? _defaultCourses];
 
   static const _defaultCourses = [
     Course(
@@ -116,6 +128,223 @@ class FakeCourseRepository implements CourseRepository {
 
   @override
   Future<Course> get(int id) async => courses.firstWhere((course) => course.id == id);
+
+  // ------------------------------------------------------------- writes
+
+  final List<Course> created = [];
+  final List<({int id, String? name, bool? isActive})> updated = [];
+
+  @override
+  Future<Course> create({
+    required String courseCode,
+    required String courseName,
+    int? departmentId,
+    int? semester,
+    String? session,
+  }) async {
+    final course = Course(
+      id: courses.length + 100,
+      courseCode: courseCode,
+      courseName: courseName,
+      createdBy: 2,
+      departmentId: departmentId,
+      semester: semester,
+      session: session,
+    );
+    created.add(course);
+    courses.add(course);
+    return course;
+  }
+
+  @override
+  Future<Course> update(
+    int id, {
+    String? courseName,
+    int? departmentId,
+    int? semester,
+    String? session,
+    bool? isActive,
+  }) async {
+    updated.add((id: id, name: courseName, isActive: isActive));
+    return get(id);
+  }
+
+  // ---------------------------------------------------------- enrolment
+
+  List<Enrollment> roll = [];
+  final List<String> enrolled = [];
+  final List<List<String>> bulkBatches = [];
+  final List<int> removed = [];
+
+  /// Set to make the next bulk call report these as skipped.
+  List<SkippedEnrolment> nextSkipped = const [];
+
+  @override
+  Future<List<Enrollment>> enrollments(int courseId) async => roll;
+
+  @override
+  Future<Enrollment> enroll(int courseId, String studentUserId) async {
+    enrolled.add(studentUserId);
+    final entry = Enrollment(
+      id: roll.length + 1,
+      courseId: courseId,
+      studentId: roll.length + 50,
+      student: UserSummary(
+        id: roll.length + 50,
+        userId: studentUserId,
+        name: 'Student $studentUserId',
+        role: UserRole.student,
+      ),
+    );
+    roll = [...roll, entry];
+    return entry;
+  }
+
+  @override
+  Future<BulkEnrolmentResult> enrollBulk(int courseId, List<String> studentUserIds) async {
+    bulkBatches.add(studentUserIds);
+    final skippedIds = nextSkipped.map((s) => s.studentUserId).toSet();
+    final took = studentUserIds.where((id) => !skippedIds.contains(id)).toList();
+    for (final id in took) {
+      await enroll(courseId, id);
+    }
+    return BulkEnrolmentResult(
+      enrolled: roll
+          .where((e) => took.contains(e.student?.userId))
+          .map((e) => e.student!)
+          .toList(growable: false),
+      skipped: nextSkipped,
+    );
+  }
+
+  @override
+  Future<void> unenroll(int courseId, int studentId) async {
+    removed.add(studentId);
+    roll = roll.where((e) => e.studentId != studentId).toList();
+  }
+}
+
+class FakeDepartmentRepository implements DepartmentRepository {
+  FakeDepartmentRepository({List<Department>? departments})
+      : departments = departments ??
+            [
+              const Department(id: 1, code: 'CSE', name: 'Computer Science'),
+              const Department(id: 2, code: 'EEE', name: 'Electrical Engineering'),
+            ];
+
+  final List<Department> departments;
+  final List<({String code, String name})> created = [];
+  final List<({int id, String? name, bool? isActive})> updated = [];
+
+  @override
+  Future<List<Department>> list() async => departments;
+
+  @override
+  Future<Department> create({required String code, required String name}) async {
+    created.add((code: code, name: name));
+    final department = Department(id: departments.length + 10, code: code, name: name);
+    departments.add(department);
+    return department;
+  }
+
+  @override
+  Future<Department> update(int id, {String? name, bool? isActive}) async {
+    updated.add((id: id, name: name, isActive: isActive));
+    return departments.firstWhere((d) => d.id == id);
+  }
+}
+
+/// A department list that will not load, for the case where the picker fails but the
+/// form must still be usable.
+class FailingDepartmentRepository implements DepartmentRepository {
+  @override
+  Future<List<Department>> list() async =>
+      throw const ApiException('Departments are unavailable');
+
+  @override
+  Future<Department> create({required String code, required String name}) async =>
+      throw const ApiException('Departments are unavailable');
+
+  @override
+  Future<Department> update(int id, {String? name, bool? isActive}) async =>
+      throw const ApiException('Departments are unavailable');
+}
+
+class FakeAdminRepository implements AdminRepository {
+  FakeAdminRepository({List<User>? users}) : directory = users ?? [];
+
+  /// Not named `users`: the repository method is called that.
+  final List<User> directory;
+  final List<({String userId, UserRole role})> created = [];
+  final List<({int id, String? name, bool? isActive})> updated = [];
+  UserFilter? lastFilter;
+
+  @override
+  Future<Paged<User>> users({
+    int page = 1,
+    int pageSize = 20,
+    UserRole? role,
+    String? search,
+  }) async {
+    lastFilter = (role: role, search: search);
+    final matched = directory.where((u) {
+      if (role != null && u.role != role) return false;
+      if (search != null && search.isNotEmpty) {
+        final needle = search.toLowerCase();
+        return u.name.toLowerCase().contains(needle) ||
+            u.userId.toLowerCase().contains(needle);
+      }
+      return true;
+    }).toList(growable: false);
+    return Paged<User>(
+      items: matched,
+      total: matched.length,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  @override
+  Future<User> user(int id) async => directory.firstWhere((u) => u.id == id);
+
+  @override
+  Future<User> createUser({
+    required String userId,
+    required String password,
+    required String name,
+    required UserRole role,
+    String? email,
+    int? departmentId,
+    String? studentId,
+    int? semester,
+    String? session,
+    String? teacherId,
+    String? designation,
+  }) async {
+    created.add((userId: userId, role: role));
+    final user = User(
+      id: directory.length + 200,
+      userId: userId,
+      name: name,
+      role: role,
+      email: email,
+      departmentId: departmentId,
+    );
+    directory.add(user);
+    return user;
+  }
+
+  @override
+  Future<User> updateUser(
+    int id, {
+    String? name,
+    String? email,
+    int? departmentId,
+    bool? isActive,
+  }) async {
+    updated.add((id: id, name: name, isActive: isActive));
+    return user(id);
+  }
 }
 
 // ------------------------------------------------------------------ exams

@@ -77,6 +77,18 @@ class CourseRepository:
             )
         ).scalar_one_or_none()
 
+    def enrolled_student_ids(self, course_id: int, student_ids: list[int]) -> set[int]:
+        """Which of these students already hold a place on the course."""
+        if not student_ids:
+            return set()
+        rows = self.db.execute(
+            select(CourseEnrollment.student_id).where(
+                CourseEnrollment.course_id == course_id,
+                CourseEnrollment.student_id.in_(student_ids),
+            )
+        ).scalars().all()
+        return set(rows)
+
     def list_enrollments(self, course_id: int) -> list[CourseEnrollment]:
         stmt = (
             select(CourseEnrollment)

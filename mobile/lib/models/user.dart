@@ -19,6 +19,29 @@ enum UserRole {
       };
 }
 
+/// The compact user object the API embeds in lists — an enrolment row, a login
+/// response — where the full profile would be dead weight.
+class UserSummary {
+  const UserSummary({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.role,
+  });
+
+  final int id;
+  final String userId;
+  final String name;
+  final UserRole role;
+
+  factory UserSummary.fromJson(Map<String, dynamic> json) => UserSummary(
+        id: json['id'] as int,
+        userId: json['user_id'] as String,
+        name: json['name'] as String,
+        role: UserRole.fromJson(json['role'] as String),
+      );
+}
+
 class StudentProfile {
   const StudentProfile({
     required this.studentId,
