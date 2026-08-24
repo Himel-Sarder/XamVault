@@ -1,0 +1,148 @@
+"""Domain enumerations.
+
+Stored as ``VARCHAR`` guarded by a CHECK constraint rather than a native PostgreSQL
+``ENUM``: adding a value later is an ordinary migration instead of an ``ALTER TYPE``
+that cannot run inside a transaction block.
+"""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+def _check_sql(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN (" + ", ".join(f"'{value}'" for value in values) + ")"
+
+
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    STUDENT = "student"
+
+
+class ExamStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class JoinRequestStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class AttemptStatus(StrEnum):
+    ACTIVE = "active"
+    SUBMITTED = "submitted"
+    AUTO_SUBMITTED = "auto_submitted"
+    TERMINATED = "terminated"
+
+
+class AnswerStatus(StrEnum):
+    PENDING = "pending"
+    EVALUATED = "evaluated"
+
+
+class ResultStatus(StrEnum):
+    PENDING = "pending"
+    PUBLISHED = "published"
+
+
+class SecurityEventType(StrEnum):
+    """What the device reported (§39).
+
+    These are observations, not accusations. Several have innocent explanations - a
+    phone call arrives, the network drops - so the record exists for a human
+    invigilator to interpret, and the platform never draws a conclusion from it.
+    """
+
+    APP_BACKGROUND = "APP_BACKGROUND"
+    APP_FOREGROUND = "APP_FOREGROUND"
+    SCREENSHOT_ATTEMPT = "SCREENSHOT_ATTEMPT"
+    SCREEN_RECORDING = "SCREEN_RECORDING"
+    EXTERNAL_ACTIVITY = "EXTERNAL_ACTIVITY"
+    NETWORK_DISCONNECT = "NETWORK_DISCONNECT"
+    NETWORK_RECONNECT = "NETWORK_RECONNECT"
+    DEVICE_TIME_CHANGE = "DEVICE_TIME_CHANGE"
+    EXAM_RESTART = "EXAM_RESTART"
+    LOCKDOWN_ENGAGED = "LOCKDOWN_ENGAGED"
+    LOCKDOWN_UNAVAILABLE = "LOCKDOWN_UNAVAILABLE"
+
+
+class SecuritySeverity(StrEnum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class QuestionType(StrEnum):
+    TEXT_MCQ = "TEXT_MCQ"
+    IMAGE_TEXT_OPTIONS = "IMAGE_TEXT_OPTIONS"
+    IMAGE_IMAGE_OPTIONS = "IMAGE_IMAGE_OPTIONS"
+    SHORT_ANSWER = "SHORT_ANSWER"
+    CODE_ANSWER = "CODE_ANSWER"
+
+
+ROLE_VALUES: tuple[str, ...] = tuple(role.value for role in UserRole)
+JOIN_REQUEST_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in JoinRequestStatus)
+ATTEMPT_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in AttemptStatus)
+ANSWER_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in AnswerStatus)
+RESULT_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in ResultStatus)
+SECURITY_EVENT_VALUES: tuple[str, ...] = tuple(e.value for e in SecurityEventType)
+SECURITY_SEVERITY_VALUES: tuple[str, ...] = tuple(s.value for s in SecuritySeverity)
+EXAM_STATUS_VALUES: tuple[str, ...] = tuple(status.value for status in ExamStatus)
+QUESTION_TYPE_VALUES: tuple[str, ...] = tuple(kind.value for kind in QuestionType)
+
+# Types answered by choosing one option; the rest are answered with free text.
+CHOICE_QUESTION_TYPES: frozenset[str] = frozenset(
+    {
+        QuestionType.TEXT_MCQ.value,
+        QuestionType.IMAGE_TEXT_OPTIONS.value,
+        QuestionType.IMAGE_IMAGE_OPTIONS.value,
+    }
+)
+
+# Types a machine cannot mark on submission; a teacher (or, later, the sandbox) does.
+MANUAL_QUESTION_TYPES: frozenset[str] = frozenset(
+    {QuestionType.SHORT_ANSWER.value, QuestionType.CODE_ANSWER.value}
+)
+
+# Types whose stem is an image the student must be shown.
+IMAGE_STEM_TYPES: frozenset[str] = frozenset(
+    {QuestionType.IMAGE_TEXT_OPTIONS.value, QuestionType.IMAGE_IMAGE_OPTIONS.value}
+)
+
+ROLE_CHECK_SQL: str = _check_sql("role", ROLE_VALUES)
+EXAM_STATUS_CHECK_SQL: str = _check_sql("status", EXAM_STATUS_VALUES)
+QUESTION_TYPE_CHECK_SQL: str = _check_sql("type", QUESTION_TYPE_VALUES)
+JOIN_REQUEST_STATUS_CHECK_SQL: str = _check_sql("status", JOIN_REQUEST_STATUS_VALUES)
+ATTEMPT_STATUS_CHECK_SQL: str = _check_sql("status", ATTEMPT_STATUS_VALUES)
+ANSWER_STATUS_CHECK_SQL: str = _check_sql("status", ANSWER_STATUS_VALUES)
+RESULT_STATUS_CHECK_SQL: str = _check_sql("status", RESULT_STATUS_VALUES)
+SECURITY_EVENT_CHECK_SQL: str = _check_sql("event_type", SECURITY_EVENT_VALUES)
+SECURITY_SEVERITY_CHECK_SQL: str = _check_sql("severity", SECURITY_SEVERITY_VALUES)
+
+# How seriously to treat each observation by default. Leaving the app is routine on a
+# personal phone; a screen recorder running is not.
+DEFAULT_EVENT_SEVERITY: dict[str, str] = {
+    SecurityEventType.APP_BACKGROUND.value: SecuritySeverity.WARNING.value,
+    SecurityEventType.APP_FOREGROUND.value: SecuritySeverity.INFO.value,
+    SecurityEventType.SCREENSHOT_ATTEMPT.value: SecuritySeverity.CRITICAL.value,
+    SecurityEventType.SCREEN_RECORDING.value: SecuritySeverity.CRITICAL.value,
+    SecurityEventType.EXTERNAL_ACTIVITY.value: SecuritySeverity.WARNING.value,
+    SecurityEventType.NETWORK_DISCONNECT.value: SecuritySeverity.INFO.value,
+    SecurityEventType.NETWORK_RECONNECT.value: SecuritySeverity.INFO.value,
+    SecurityEventType.DEVICE_TIME_CHANGE.value: SecuritySeverity.WARNING.value,
+    SecurityEventType.EXAM_RESTART.value: SecuritySeverity.WARNING.value,
+    SecurityEventType.LOCKDOWN_ENGAGED.value: SecuritySeverity.INFO.value,
+    SecurityEventType.LOCKDOWN_UNAVAILABLE.value: SecuritySeverity.WARNING.value,
+}
+
+# An attempt in progress. Anything else is finished and frozen.
+OPEN_ATTEMPT_STATUSES: frozenset[str] = frozenset({AttemptStatus.ACTIVE.value})
+
+# An exam may only be edited while it is a draft; publishing freezes it.
+EDITABLE_EXAM_STATUSES: frozenset[str] = frozenset({ExamStatus.DRAFT.value})

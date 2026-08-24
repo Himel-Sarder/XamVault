@@ -1,0 +1,46 @@
+# Optional local stack. The primary development database is Render PostgreSQL
+# (see docs/architecture.md §5); this exists for working offline.
+#
+#   docker compose up --build
+#   API   -> http://localhost:8000/docs
+#   DB    -> localhost:5432
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: uniexam
+      POSTGRES_PASSWORD: uniexam
+      POSTGRES_DB: uniexam
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # The API waits for this: starting migrations against a database that is still
+      # initialising fails the whole container.
+      test: ["CMD-SHELL", "pg_isready -U uniexam -d uniexam"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENV: development
+      DATABASE_URL: postgresql://uniexam:uniexam@db:5432/uniexam
+      JWT_SECRET_KEY: local-development-secret-not-for-deployment-use
+      CORS_ORIGINS: http://localhost:3000
+      FIRST_ADMIN_USER_ID: admin
+      FIRST_ADMIN_PASSWORD: Admin@12345
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  postgres_data:
+  uploads:

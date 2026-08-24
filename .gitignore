@@ -1,0 +1,50 @@
+# ---------- Python / FastAPI ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.db
+*.sqlite3
+
+# ---------- Secrets ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Local run artefacts ----------
+backend/uvicorn.log
+mobile/emulator.log
+mobile/flutter_run.log
+*.pid
+
+# ---------- Uploads (never commit user content) ----------
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ---------- Flutter / Dart ----------
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.packages
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/app/*.jks
+mobile/ios/Pods/
+mobile/ios/Flutter/Flutter.framework
+mobile/ios/Flutter/Generated.xcconfig
+mobile/**/GeneratedPluginRegistrant.*
+
+# ---------- IDE / OS ----------
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,27 @@
+# ---- Web framework ----
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart==0.0.32
+
+# ---- Data / ORM ----
+SQLAlchemy==2.0.52
+alembic==1.19.1
+psycopg[binary]==3.3.4
+
+# ---- Validation / configuration ----
+pydantic==2.13.4
+pydantic-settings==2.15.0
+email-validator==2.3.0
+
+# ---- Uploads ----
+# Used to *decode* uploaded images, not just trust their extension (docs/security.md §7).
+Pillow==12.3.0
+
+# ---- Reporting ----
+reportlab==5.0.1
+openpyxl==3.1.5
+
+# ---- Security ----
+PyJWT==2.13.0
+pwdlib[argon2,bcrypt]==0.3.1
+slowapi==0.1.10
