@@ -503,3 +503,50 @@ circulation before changing it.
 question with no exam links was orphaned junk and was cleaned up. Now it is a library
 entry, and deletion is an explicit act through `DELETE /question-bank/{id}` — which is
 refused (`409 question_in_use`) while any exam still links to it.
+
+
+---
+
+## 10. Notifications — `/api/v1/notifications`
+
+```
+GET  /notifications        ?unread_only&page   → paged NotificationResponse
+GET  /notifications/unread-count               → {unread}
+POST /notifications/{id}/read                  → NotificationResponse
+POST /notifications/read-all                   → {updated}
+```
+
+Notifications are **stored**, not merely pushed. A student whose app was closed when
+their exam was published must still see it when they open it, so the database row *is*
+the notification; any push is a second channel for the same row.
+
+Every list is scoped to the caller inside the query — there is no id to ask for and no
+filter to forget. Another person's notification is `404`.
+
+Six events, each raised inside the transaction of the action that caused it, so a
+rolled-back action leaves no notification claiming it happened:
+
+| Event | Who hears | Category |
+|---|---|---|
+| An exam is published | every student enrolled in the course | `exam_published` |
+| A student asks to join | the exam's teacher | `join_request_received` |
+| A request is approved | the student | `join_request_approved` |
+| A request is rejected | the student | `join_request_rejected` |
+| An attempt is submitted | the exam's teacher | `exam_submitted` |
+| Results are released | each student whose result moved | `result_published` |
+
+`payload` is a pointer for the app to navigate with (`{"exam_id": 11}`), not a copy of
+the record. Where a tap leads depends on who is reading: the same exam id opens the
+teacher's exam screen or the student's exam details.
+
+### Push delivery — not implemented
+
+`NotificationService._emit` is where a push channel would fan out, and it is deliberately
+empty. Firebase Cloud Messaging needs three things this project does not have:
+
+1. a Firebase project and a **service-account key** for the server,
+2. **`google-services.json`** in `mobile/android/app/`,
+3. a **device-token** table and registration endpoint, so the server knows where to send.
+
+Adding a client that silently drops every message would look finished and deliver
+nothing, so it was left out. The in-app channel is complete and does not depend on it.

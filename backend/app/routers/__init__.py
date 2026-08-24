@@ -11,6 +11,7 @@ from app.routers import (
     departments,
     exams,
     join_requests,
+    notifications,
     question_bank,
     reports,
     results,
@@ -31,6 +32,7 @@ api_router.include_router(grading.router)
 api_router.include_router(security.router)
 api_router.include_router(uploads.router)
 api_router.include_router(question_bank.router)
+api_router.include_router(notifications.router)
 api_router.include_router(results.router)
 api_router.include_router(reports.router)
 

@@ -167,4 +167,6 @@ Config comes from environment variables only (`DATABASE_URL`, `JWT_SECRET_KEY`,
 | 16 | Results, with teacher-controlled release | **done** |
 | 17 | Analytics — cohort, distribution, per-question accuracy | **done** |
 | 18 | PDF and Excel export | **done** |
-| 19–21 | Notifications, security testing, Render deploy | planned |
+| 19 | Notifications — in-app complete; push needs Firebase credentials | partly |
+| 20 | Security testing | **done** — woven through, not a separate pass |
+| 21 | Render deployment — database live; API not yet deployed | partly |

@@ -12,6 +12,7 @@ from app.models.result import Result
 from app.models.user import User
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.exam_repository import ExamRepository
+from app.services.notification_service import NotificationService
 from app.schemas.result import (
     ResultStudent,
     ScoreBreakdown,
@@ -74,6 +75,12 @@ class ResultService:
         for result in pending:
             result.status = ResultStatus.PUBLISHED.value
             result.published_at = now
+
+        # Only the students whose result actually moved — telling someone their result
+        # is ready when it was already ready would be noise.
+        NotificationService(self.db).results_published(
+            pending[0].exam, [result.student_id for result in pending]
+        )
         self.db.commit()
         return len(pending)
 

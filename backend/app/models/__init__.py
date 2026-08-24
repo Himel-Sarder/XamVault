@@ -12,6 +12,7 @@ from app.models.enums import (
     AttemptStatus,
     ExamStatus,
     JoinRequestStatus,
+    NotificationCategory,
     QuestionType,
     ResultStatus,
     SecurityEventType,
@@ -20,6 +21,7 @@ from app.models.enums import (
 )
 from app.models.exam import Exam, ExamQuestion, ExamSettings
 from app.models.join_request import JoinRequest
+from app.models.notification import Notification
 from app.models.question import Question, QuestionOption
 from app.models.refresh_token import RefreshToken
 from app.models.result import Result
@@ -39,6 +41,8 @@ __all__ = [
     "ExamStatus",
     "JoinRequest",
     "JoinRequestStatus",
+    "Notification",
+    "NotificationCategory",
     "Question",
     "QuestionOption",
     "QuestionType",

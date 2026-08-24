@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/features/auth/login_screen.dart';
 import 'package:uniexam/features/shared/courses_screen.dart';
+import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/features/shared/profile_screen.dart';
 import 'package:uniexam/features/shared/splash_screen.dart';
 import 'package:uniexam/features/student/available_exams_screen.dart';
@@ -42,6 +43,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.splash, builder: (_, _) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
       GoRoute(path: Routes.profile, builder: (_, _) => const ProfileScreen()),
+      GoRoute(
+        path: Routes.notifications,
+        builder: (_, _) => const NotificationsScreen(),
+      ),
       GoRoute(
         path: Routes.teacherHome,
         builder: (_, _) => const TeacherDashboardScreen(),

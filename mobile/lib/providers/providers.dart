@@ -7,6 +7,7 @@ import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
+import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
@@ -51,4 +52,8 @@ final examSecurityProvider = Provider<ExamSecurity>((ref) {
 
 final questionBankRepositoryProvider = Provider<QuestionBankRepository>(
   (ref) => QuestionBankRepository(ref.watch(apiClientProvider)),
+);
+
+final notificationRepositoryProvider = Provider<NotificationRepository>(
+  (ref) => NotificationRepository(ref.watch(apiClientProvider)),
 );

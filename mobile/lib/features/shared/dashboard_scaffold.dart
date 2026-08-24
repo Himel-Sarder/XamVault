@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
+import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
@@ -40,6 +41,7 @@ class DashboardScaffold extends ConsumerWidget {
         title: Text(title),
         actions: [
           ...actions,
+          const NotificationBell(),
           IconButton(
             tooltip: 'Profile',
             onPressed: () => context.push(Routes.profile),

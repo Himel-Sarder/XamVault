@@ -16,6 +16,7 @@ from app.repositories.course_repository import CourseRepository
 from app.repositories.exam_repository import ExamRepository
 from app.repositories.join_request_repository import JoinRequestRepository
 from app.schemas.join_request import StudentJoinRequestResponse
+from app.services.notification_service import NotificationService
 from app.services.student_exam_service import availability_of
 
 
@@ -68,6 +69,7 @@ class JoinRequestService:
         )
         try:
             self.requests.add(request)
+            NotificationService(self.db).join_request_received(exam, student)
             self.db.commit()
         except IntegrityError as error:
             # The partial unique index caught a duplicate created concurrently; the
@@ -118,6 +120,9 @@ class JoinRequestService:
             )
 
         self._apply(request, actor, approve=approve)
+        NotificationService(self.db).join_request_reviewed(
+            request.exam, request.student_id, approved=approve
+        )
         self.db.commit()
         return request
 
@@ -137,8 +142,14 @@ class JoinRequestService:
             wanted = set(request_ids)
             pending = [request for request in pending if request.id in wanted]
 
+        notifications = NotificationService(self.db)
+        exam = self.exams.get(exam_id)
         for request in pending:
             self._apply(request, actor, approve=approve)
+            if exam is not None:
+                notifications.join_request_reviewed(
+                    exam, request.student_id, approved=approve
+                )
         self.db.commit()
         return len(pending)
 

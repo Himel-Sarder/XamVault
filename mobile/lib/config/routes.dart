@@ -9,6 +9,9 @@ class Routes {
   static const login = '/login';
   static const profile = '/profile';
 
+  /// Shared by every role — what a tap leads to depends on who is reading.
+  static const notifications = '/notifications';
+
   static const teacherHome = '/teacher';
   static const teacherCourses = '/teacher/courses';
 
@@ -70,8 +73,8 @@ String? resolveRedirect(AuthState auth, String location) {
   // Authenticated users have no business on the splash or login screens.
   if (location == Routes.splash || location == Routes.login) return home;
 
-  // The profile screen is shared by every role.
-  if (location == Routes.profile) return null;
+  // Shared by every role.
+  if (location == Routes.profile || location == Routes.notifications) return null;
 
   // A student typing /teacher/... is sent back to their own area. The backend would
   // refuse the data anyway; this stops the app from rendering an empty teacher shell.

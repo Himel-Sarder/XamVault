@@ -31,6 +31,7 @@ from app.repositories.question_repository import QuestionRepository
 from app.schemas.exam import ExamCreate, ExamSettingsUpdate, ExamUpdate
 from app.schemas.question import QuestionCreate
 from app.services.course_service import CourseService
+from app.services.notification_service import NotificationService
 
 
 class ExamService:
@@ -374,6 +375,10 @@ class ExamService:
         exam.expires_at = exam.start_at + timedelta(minutes=exam.duration_minutes)
         exam.status = ExamStatus.PUBLISHED.value
         exam.published_at = now
+
+        # Inside the same transaction: if publishing rolls back, nobody was told it
+        # happened.
+        NotificationService(self.db).exam_published(exam)
 
         # One transaction: an exam is never half-published with some questions frozen.
         self.db.commit()

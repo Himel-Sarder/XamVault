@@ -78,6 +78,17 @@ class SecuritySeverity(StrEnum):
     CRITICAL = "critical"
 
 
+class NotificationCategory(StrEnum):
+    """What happened (§61). The category decides the icon and where a tap leads."""
+
+    EXAM_PUBLISHED = "exam_published"
+    JOIN_REQUEST_RECEIVED = "join_request_received"
+    JOIN_REQUEST_APPROVED = "join_request_approved"
+    JOIN_REQUEST_REJECTED = "join_request_rejected"
+    EXAM_SUBMITTED = "exam_submitted"
+    RESULT_PUBLISHED = "result_published"
+
+
 class QuestionType(StrEnum):
     TEXT_MCQ = "TEXT_MCQ"
     IMAGE_TEXT_OPTIONS = "IMAGE_TEXT_OPTIONS"
@@ -93,6 +104,9 @@ ANSWER_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in AnswerStatus)
 RESULT_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in ResultStatus)
 SECURITY_EVENT_VALUES: tuple[str, ...] = tuple(e.value for e in SecurityEventType)
 SECURITY_SEVERITY_VALUES: tuple[str, ...] = tuple(s.value for s in SecuritySeverity)
+NOTIFICATION_CATEGORY_VALUES: tuple[str, ...] = tuple(
+    c.value for c in NotificationCategory
+)
 EXAM_STATUS_VALUES: tuple[str, ...] = tuple(status.value for status in ExamStatus)
 QUESTION_TYPE_VALUES: tuple[str, ...] = tuple(kind.value for kind in QuestionType)
 
@@ -124,6 +138,9 @@ ANSWER_STATUS_CHECK_SQL: str = _check_sql("status", ANSWER_STATUS_VALUES)
 RESULT_STATUS_CHECK_SQL: str = _check_sql("status", RESULT_STATUS_VALUES)
 SECURITY_EVENT_CHECK_SQL: str = _check_sql("event_type", SECURITY_EVENT_VALUES)
 SECURITY_SEVERITY_CHECK_SQL: str = _check_sql("severity", SECURITY_SEVERITY_VALUES)
+NOTIFICATION_CATEGORY_CHECK_SQL: str = _check_sql(
+    "category", NOTIFICATION_CATEGORY_VALUES
+)
 
 # How seriously to treat each observation by default. Leaving the app is routine on a
 # personal phone; a screen recorder running is not.

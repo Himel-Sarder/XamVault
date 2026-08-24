@@ -11,6 +11,7 @@ import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/exam_result.dart';
 import 'package:uniexam/models/join_request.dart';
+import 'package:uniexam/models/notification.dart';
 import 'package:uniexam/models/student_exam.dart';
 import 'package:uniexam/models/question.dart';
 import 'package:uniexam/models/paged.dart';
@@ -18,6 +19,7 @@ import 'package:uniexam/models/user.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
+import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
@@ -1130,3 +1132,94 @@ typedef BankFilterCall = ({
   String? topic,
   String? search,
 });
+
+
+AppNotification buildNotification({
+  int id = 500,
+  NotificationCategory category = NotificationCategory.examPublished,
+  String title = 'New exam: Mid Term Quiz',
+  String body = 'CSE-301 — 30 minutes, 20 marks.',
+  bool isRead = false,
+  int? examId = 10,
+}) {
+  return AppNotification(
+    id: id,
+    category: category,
+    title: title,
+    body: body,
+    isRead: isRead,
+    createdAt: DateTime(2026, 8, 24, 9, 15),
+    payload: examId == null ? null : {'exam_id': examId},
+  );
+}
+
+class FakeNotificationRepository implements NotificationRepository {
+  FakeNotificationRepository({List<AppNotification>? notifications})
+      : notifications = notifications ?? [buildNotification()];
+
+  final List<AppNotification> notifications;
+  ApiException? failWith;
+
+  final List<int> readIds = [];
+  int markAllCalls = 0;
+  bool? lastUnreadOnly;
+
+  void _maybeFail() {
+    final error = failWith;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<Paged<AppNotification>> list({
+    bool unreadOnly = false,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    _maybeFail();
+    lastUnreadOnly = unreadOnly;
+    // Filtering is the server's job, but this one is cheap to mirror and makes the
+    // unread-filter test assert on what the user actually sees.
+    final items = unreadOnly
+        ? notifications.where((item) => !item.isRead).toList()
+        : notifications;
+    return Paged<AppNotification>(
+      items: items,
+      total: items.length,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  @override
+  Future<int> unreadCount() async {
+    _maybeFail();
+    return notifications.where((item) => !item.isRead).length;
+  }
+
+  @override
+  Future<AppNotification> markRead(int notificationId) async {
+    _maybeFail();
+    readIds.add(notificationId);
+    final index = notifications.indexWhere((item) => item.id == notificationId);
+    final updated = notifications[index].copyWith(
+      isRead: true,
+      readAt: DateTime(2026, 8, 24, 10),
+    );
+    notifications[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<int> markAllRead() async {
+    _maybeFail();
+    markAllCalls++;
+    final unread = notifications.where((item) => !item.isRead).length;
+    for (var index = 0; index < notifications.length; index++) {
+      notifications[index] = notifications[index].copyWith(
+        isRead: true,
+        readAt: DateTime(2026, 8, 24, 10),
+      );
+    }
+    return unread;
+  }
+}

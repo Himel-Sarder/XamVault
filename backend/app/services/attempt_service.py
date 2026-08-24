@@ -45,6 +45,7 @@ from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.course_repository import CourseRepository
 from app.repositories.exam_repository import ExamRepository
 from app.repositories.join_request_repository import JoinRequestRepository
+from app.services.notification_service import NotificationService
 
 
 class AttemptService:
@@ -358,6 +359,12 @@ class AttemptService:
 
         attempt.status = status.value
         attempt.submitted_at = now
+
+        NotificationService(self.db).exam_submitted(
+            attempt.exam,
+            attempt.student,
+            auto=status is AttemptStatus.AUTO_SUBMITTED,
+        )
         return self._grade(attempt, now)
 
     # ---------------------------------------------------------------- grading
