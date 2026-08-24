@@ -32,6 +32,16 @@ class ExamDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.edit_outlined),
             ),
           // Requests only exist once students can see the exam, i.e. after publishing.
+          if (exam.valueOrNull?.isEditable ?? false)
+            IconButton(
+              key: const Key('add_from_bank'),
+              tooltip: 'Add from question bank',
+              onPressed: () async {
+                await context.push(Routes.teacherExamBankPicker(examId));
+                refreshExam(ref, examId, courseId: exam.valueOrNull?.courseId);
+              },
+              icon: const Icon(Icons.inventory_2_outlined),
+            ),
           if (!(exam.valueOrNull?.isDraft ?? true))
             IconButton(
               key: const Key('view_join_requests'),

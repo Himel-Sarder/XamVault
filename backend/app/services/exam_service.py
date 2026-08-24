@@ -145,12 +145,10 @@ class ExamService:
     def delete(self, exam_id: int, actor: User) -> None:
         exam = self._get_owned(exam_id, actor)
         self._assert_editable(exam)
-        # Cascades remove the settings and the question links; the questions themselves
-        # are deleted only if nothing else references them.
-        question_ids = [link.question_id for link in self.exams.list_exam_questions(exam.id)]
+        # Cascades remove the settings and the question links. The questions themselves
+        # survive in the teacher's library, where they can be reused or deleted
+        # deliberately.
         self.exams.delete(exam)
-        for question_id in question_ids:
-            self._delete_question_if_orphaned(question_id)
         self.db.commit()
 
     # ------------------------------------------------------------- questions
@@ -247,9 +245,10 @@ class ExamService:
         if link is None:
             raise NotFoundError("That question is not part of this exam")
 
-        question_id = link.question_id
         self.exams.delete_exam_question(link)
-        self._delete_question_if_orphaned(question_id)
+        # The question itself stays. It is a library entry (Phase 6) that may be reused
+        # in another exam, so removing it from *this* paper must not destroy it —
+        # deleting a question is an explicit act, through the question bank.
         self._resequence(exam.id)
         self._recalculate_total_marks(exam)
         self.db.commit()
@@ -285,16 +284,6 @@ class ExamService:
         has no gaps."""
         for index, link in enumerate(self.exams.list_exam_questions(exam_id)):
             link.display_order = index
-
-    def _delete_question_if_orphaned(self, question_id: int) -> None:
-        """Questions are shared entities (the Phase 6 bank). Only delete one when no
-        exam still links to it."""
-        question = self.questions.get(question_id)
-        if question is None:
-            return
-        self.db.flush()
-        if not question.exam_links:
-            self.questions.delete(question)
 
     # --------------------------------------------------------------- publish
 

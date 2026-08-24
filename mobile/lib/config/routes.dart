@@ -12,11 +12,14 @@ class Routes {
   static const teacherHome = '/teacher';
   static const teacherCourses = '/teacher/courses';
 
+  static const teacherQuestionBank = '/teacher/question-bank';
+
   static String teacherCourse(int courseId) => '/teacher/courses/$courseId';
   static String teacherExamCreate(int courseId) => '/teacher/courses/$courseId/exams/new';
   static String teacherExam(int examId) => '/teacher/exams/$examId';
   static String teacherExamEdit(int examId) => '/teacher/exams/$examId/edit';
   static String teacherQuestionNew(int examId) => '/teacher/exams/$examId/questions/new';
+  static String teacherExamBankPicker(int examId) => '/teacher/exams/$examId/questions/bank';
   static String teacherQuestionEdit(int examId, int questionId) =>
       '/teacher/exams/$examId/questions/$questionId';
 

@@ -471,3 +471,35 @@ under a `0.0%` format — a spreadsheet nobody can sum is not much of an export.
 
 `UNIVERSITY_NAME` is configuration: the platform has no way to know a university's name,
 so it is not a hardcoded string.
+
+
+---
+
+## 9. Question bank — `/api/v1/question-bank`
+
+```
+GET    /question-bank        ?type&difficulty&topic&search&page  → paged BankQuestionResponse
+POST   /question-bank                                            → BankQuestionResponse
+GET    /question-bank/topics                                     → the topics I have used
+GET    /question-bank/{id}
+PUT    /question-bank/{id}
+DELETE /question-bank/{id}                                       → 204
+
+POST   /exams/{id}/questions/from-bank   {question_ids: [...]}   → [ExamQuestionResponse]
+```
+
+A question always lived independently of any exam — `exam_questions` is only the link —
+so the bank exposes that library directly rather than introducing a new concept. Scope is
+per teacher; another teacher's question is `404`, and cannot be borrowed into an exam.
+
+**Editing a reused question is safe, and this is why:** a published exam renders and
+grades from the snapshot frozen when it was published, so an edit here cannot disturb a
+paper students have already sat. A *draft* exam does follow the edit — including its
+`total_marks`, which is recomputed — which is what a teacher would expect. Each response
+carries `used_in_exams` and `used_in_published` so the teacher can see what is in
+circulation before changing it.
+
+**Removing a question from an exam no longer deletes it.** Before the bank existed, a
+question with no exam links was orphaned junk and was cleaned up. Now it is a library
+entry, and deletion is an explicit act through `DELETE /question-bank/{id}` — which is
+refused (`409 question_in_use`) while any exam still links to it.

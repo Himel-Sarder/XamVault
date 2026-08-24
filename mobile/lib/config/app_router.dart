@@ -21,6 +21,7 @@ import 'package:uniexam/features/teacher/attempt_grading_screen.dart';
 import 'package:uniexam/features/teacher/exam_results_screen.dart';
 import 'package:uniexam/features/teacher/grading_queue_screen.dart';
 import 'package:uniexam/features/teacher/join_requests_screen.dart';
+import 'package:uniexam/features/teacher/question_bank_screen.dart';
 import 'package:uniexam/features/teacher/question_builder_screen.dart';
 import 'package:uniexam/features/teacher/teacher_dashboard_screen.dart';
 import 'package:uniexam/providers/auth_provider.dart';
@@ -66,6 +67,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: 'question-bank',
+            builder: (_, _) => const QuestionBankScreen(),
+          ),
+          GoRoute(
             path: 'exams/:examId',
             builder: (_, state) => ExamDetailScreen(
               examId: int.parse(state.pathParameters['examId']!),
@@ -109,6 +114,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+              GoRoute(
+                path: 'questions/bank',
+                builder: (_, state) => QuestionBankScreen(
+                  selectionFor: int.parse(state.pathParameters['examId']!),
+                ),
               ),
               GoRoute(
                 path: 'questions/new',

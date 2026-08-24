@@ -181,13 +181,13 @@ lockdown (12), analytics (17), PDF and Excel export (18), notifications (19).
 ## Tests
 
 ```bash
-# Backend — 237 tests, against a schema built by Alembic
+# Backend — 257 tests, against a schema built by Alembic
 cd backend && .venv/Scripts/python -m pytest
 
 # ...and the same suite against real PostgreSQL (empties every table it touches)
 TEST_DATABASE_URL="postgresql://..." .venv/Scripts/python -m pytest
 
-# Flutter — 138 unit/widget tests, network faked
+# Flutter — 150 unit/widget tests, network faked
 cd mobile && flutter analyze && flutter test
 ```
 

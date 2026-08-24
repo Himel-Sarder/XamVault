@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/models/exam.dart';
+import 'package:uniexam/models/bank_question.dart';
 import 'package:uniexam/models/join_request.dart';
 import 'package:uniexam/models/question.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -49,3 +50,21 @@ void refreshExam(WidgetRef ref, int examId, {int? courseId}) {
   ref.invalidate(joinRequestsProvider(examId));
   if (courseId != null) ref.invalidate(courseExamsProvider(courseId));
 }
+
+/// The teacher's library, filtered.
+typedef BankFilter = ({QuestionType? type, String? difficulty, String? topic, String? search});
+
+final questionBankProvider =
+    FutureProvider.autoDispose.family<List<BankQuestion>, BankFilter>((ref, filter) async {
+  final page = await ref.watch(questionBankRepositoryProvider).list(
+        type: filter.type,
+        difficulty: filter.difficulty,
+        topic: filter.topic,
+        search: filter.search,
+      );
+  return page.items;
+});
+
+final bankTopicsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  return ref.watch(questionBankRepositoryProvider).topics();
+});

@@ -23,6 +23,7 @@ from app.schemas.join_request import (
 )
 from app.schemas.attempt import AttemptResponse
 from app.schemas.question import ExamQuestionResponse, QuestionCreate
+from app.schemas.question_bank import AttachFromBankRequest
 from app.schemas.analytics import ExamAnalytics
 from app.schemas.grading import GradingQueueEntry
 from app.schemas.result import PublishResultsResponse, TeacherResultResponse
@@ -31,6 +32,7 @@ from app.services.analytics_service import AnalyticsService
 from app.services.attempt_service import AttemptService
 from app.services.exam_service import ExamService
 from app.services.grading_service import GradingService
+from app.services.question_bank_service import QuestionBankService
 from app.services.join_request_service import JoinRequestService
 from app.services.result_service import ResultService
 from app.services.student_exam_service import StudentExamService
@@ -407,3 +409,21 @@ def exam_analytics(
     return AnalyticsService(db).for_exam(
         exam_id, current_user, pass_percentage=pass_percentage
     )
+
+
+@router.post(
+    "/{exam_id}/questions/from-bank",
+    response_model=list[ExamQuestionResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add existing questions from my library to a draft exam",
+)
+def add_questions_from_bank(
+    exam_id: int,
+    payload: AttachFromBankRequest,
+    current_user: TeacherUser,
+    db: DbSession,
+):
+    links = QuestionBankService(db).attach_to_exam(
+        exam_id, payload.question_ids, current_user
+    )
+    return [_question_response(link) for link in links]

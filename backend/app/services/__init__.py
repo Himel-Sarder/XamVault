@@ -8,6 +8,7 @@ from app.services.department_service import DepartmentService
 from app.services.exam_service import ExamService
 from app.services.grading_service import GradingService
 from app.services.join_request_service import JoinRequestService
+from app.services.question_bank_service import QuestionBankService
 from app.services.report_service import ReportService
 from app.services.result_service import ResultService
 from app.services.student_exam_service import StudentExamService
@@ -22,6 +23,7 @@ __all__ = [
     "ExamService",
     "GradingService",
     "JoinRequestService",
+    "QuestionBankService",
     "ReportService",
     "ResultService",
     "StudentExamService",

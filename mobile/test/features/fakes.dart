@@ -6,6 +6,7 @@ import 'package:uniexam/models/department.dart';
 import 'dart:async';
 
 import 'package:uniexam/models/analytics.dart';
+import 'package:uniexam/models/bank_question.dart';
 import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/exam_result.dart';
@@ -17,6 +18,7 @@ import 'package:uniexam/models/user.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
+import 'package:uniexam/repositories/question_bank_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
 const demoDepartment = Department(id: 1, code: 'CSE', name: 'Computer Science & Engineering');
@@ -1013,3 +1015,118 @@ class FakeExamSecurity implements ExamSecurity {
   @override
   void dispose() => _controller.close();
 }
+
+
+BankQuestion buildBankQuestion({
+  int id = 300,
+  QuestionType type = QuestionType.textMcq,
+  String questionText = 'What is normalization?',
+  int marks = 5,
+  String? topic = 'Databases',
+  String? difficulty = 'medium',
+  int usedInExams = 0,
+  bool usedInPublished = false,
+  String? language,
+}) {
+  return BankQuestion(
+    id: id,
+    type: type,
+    questionText: questionText,
+    marks: marks,
+    topic: topic,
+    difficulty: difficulty,
+    language: language,
+    usedInExams: usedInExams,
+    usedInPublished: usedInPublished,
+    options: const [
+      QuestionOption(id: 1, displayOrder: 0, isCorrect: true, optionText: 'Removing redundancy'),
+      QuestionOption(id: 2, displayOrder: 1, isCorrect: false, optionText: 'Adding redundancy'),
+    ],
+  );
+}
+
+class FakeQuestionBankRepository implements QuestionBankRepository {
+  FakeQuestionBankRepository({List<BankQuestion>? questions, List<String>? topics})
+      : questions = questions ?? [buildBankQuestion()],
+        availableTopics = topics ?? const ['Databases', 'Networks'];
+
+  final List<BankQuestion> questions;
+  final List<String> availableTopics;
+  ApiException? failWith;
+
+  /// The filter the screen last asked for — the assertion target for filter tests.
+  BankFilterCall? lastFilter;
+  final List<int> deleted = [];
+  final List<({int examId, List<int> questionIds})> attached = [];
+
+  void _maybeFail() {
+    final error = failWith;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<Paged<BankQuestion>> list({
+    QuestionType? type,
+    String? difficulty,
+    String? topic,
+    String? search,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    _maybeFail();
+    lastFilter = (type: type, difficulty: difficulty, topic: topic, search: search);
+    // Filtering is the server's job; the fake returns what it was given so a test can
+    // assert on the request rather than on a reimplementation of the query.
+    return Paged<BankQuestion>(
+      items: questions,
+      total: questions.length,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  @override
+  Future<List<String>> topics() async {
+    _maybeFail();
+    return availableTopics;
+  }
+
+  @override
+  Future<BankQuestion> create(QuestionDraft draft) async {
+    _maybeFail();
+    final created = buildBankQuestion(
+      id: 900 + questions.length,
+      questionText: draft.questionText,
+      marks: draft.marks,
+    );
+    questions.add(created);
+    return created;
+  }
+
+  @override
+  Future<BankQuestion> update(int questionId, QuestionDraft draft) async {
+    _maybeFail();
+    return buildBankQuestion(id: questionId, questionText: draft.questionText);
+  }
+
+  @override
+  Future<void> delete(int questionId) async {
+    _maybeFail();
+    deleted.add(questionId);
+    questions.removeWhere((question) => question.id == questionId);
+  }
+
+  @override
+  Future<int> attachToExam(int examId, List<int> questionIds) async {
+    _maybeFail();
+    attached.add((examId: examId, questionIds: questionIds));
+    return questionIds.length;
+  }
+}
+
+typedef BankFilterCall = ({
+  QuestionType? type,
+  String? difficulty,
+  String? topic,
+  String? search,
+});

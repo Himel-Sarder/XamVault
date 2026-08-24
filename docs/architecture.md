@@ -155,7 +155,7 @@ Config comes from environment variables only (`DATABASE_URL`, `JWT_SECRET_KEY`,
 | 3 | Departments, courses, enrollment (full CRUD + bulk enrol) | models in 1 |
 | 4 | Exam creation, settings, publish validation, snapshot freezing | **done** |
 | 5 | Question builder — all five types, with validated image upload | **done** |
-| 6 | Question bank (reuse and search) | planned |
+| 6 | Question bank — reuse, search, safe editing | **done** |
 | 7 | Student exam discovery (role-dispatched responses) | **done** |
 | 8 | Join requests and teacher approval, incl. bulk review | **done** |
 | 9 | Attempt engine: start authorization, resume, answer saving, submission | **done** |

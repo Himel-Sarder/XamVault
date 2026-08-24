@@ -7,6 +7,7 @@ import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/repositories/auth_repository.dart';
 import 'package:uniexam/repositories/course_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
+import 'package:uniexam/repositories/question_bank_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
 /// Overridden in tests with [InMemoryTokenStore].
@@ -47,3 +48,7 @@ final examSecurityProvider = Provider<ExamSecurity>((ref) {
   ref.onDispose(security.dispose);
   return security;
 });
+
+final questionBankRepositoryProvider = Provider<QuestionBankRepository>(
+  (ref) => QuestionBankRepository(ref.watch(apiClientProvider)),
+);

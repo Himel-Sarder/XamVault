@@ -17,12 +17,16 @@ class DashboardScaffold extends ConsumerWidget {
     required this.coursesLabel,
     required this.coursesRoute,
     required this.emptyCoursesMessage,
+    this.actions = const [],
   });
 
   final String title;
   final String coursesLabel;
   final String? coursesRoute;
   final String emptyCoursesMessage;
+
+  /// Extra app-bar actions, before the profile button.
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,6 +39,7 @@ class DashboardScaffold extends ConsumerWidget {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          ...actions,
           IconButton(
             tooltip: 'Profile',
             onPressed: () => context.push(Routes.profile),
