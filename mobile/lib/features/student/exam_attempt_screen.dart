@@ -362,10 +362,13 @@ class SubmittedView extends ConsumerWidget {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                FilledButton(
-                  key: const Key('leave_exam'),
-                  onPressed: () => context.go(Routes.studentHome),
-                  child: const Text('Back to dashboard'),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    key: const Key('leave_exam'),
+                    onPressed: () => context.go(Routes.studentHome),
+                    child: const Text('Back to dashboard'),
+                  ),
                 ),
               ],
             ),

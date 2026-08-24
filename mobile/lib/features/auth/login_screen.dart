@@ -108,16 +108,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _ErrorBanner(message: auth.errorMessage!),
                     ],
                     const SizedBox(height: 24),
-                    FilledButton(
-                      key: const Key('login_submit'),
-                      onPressed: auth.isBusy ? null : _submit,
-                      child: auth.isBusy
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
-                            )
-                          : const Text('Sign in'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        key: const Key('login_submit'),
+                        onPressed: auth.isBusy ? null : _submit,
+                        child: auth.isBusy
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              )
+                            : const Text('Sign in'),
+                      ),
                     ),
                   ],
                 ),

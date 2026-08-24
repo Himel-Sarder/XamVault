@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/features/teacher/course_detail_screen.dart';
 import 'package:uniexam/features/teacher/exam_form_screen.dart';
 import 'package:uniexam/models/exam.dart';
@@ -15,7 +16,7 @@ Widget wrap(Widget child, {FakeExamRepository? exams, FakeCourseRepository? cour
       examRepositoryProvider.overrideWithValue(exams ?? FakeExamRepository()),
       courseRepositoryProvider.overrideWithValue(courses ?? FakeCourseRepository()),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.light(), home: child),
   );
 }
 

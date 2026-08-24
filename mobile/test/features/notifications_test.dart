@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/models/notification.dart';
@@ -11,7 +12,7 @@ import 'fakes.dart';
 Widget wrap(Widget child, {required FakeNotificationRepository notifications}) {
   return ProviderScope(
     overrides: [notificationRepositoryProvider.overrideWithValue(notifications)],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.light(), home: child),
   );
 }
 

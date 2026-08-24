@@ -337,15 +337,18 @@ class _QuestionBuilderScreenState extends ConsumerState<QuestionBuilderScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            FilledButton(
-              key: const Key('question_save'),
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 22, width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : Text(widget.isEditing ? 'Save question' : 'Add question'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('question_save'),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        height: 22, width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : Text(widget.isEditing ? 'Save question' : 'Add question'),
+              ),
             ),
           ],
         ),

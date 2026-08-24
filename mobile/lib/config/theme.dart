@@ -35,7 +35,12 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          // Height only. `Size.fromHeight` would set the *width* minimum to infinity,
+          // which a Row cannot satisfy: it offers its children unbounded width, and a
+          // minimum of infinity against that fails layout outright, leaving the button
+          // with no size to hit-test. Stretching is the parent's business, so the
+          // buttons that should fill their row say so themselves with a SizedBox.
+          minimumSize: const Size(64, 52),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
