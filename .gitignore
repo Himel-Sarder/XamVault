@@ -48,3 +48,11 @@ mobile/**/GeneratedPluginRegistrant.*
 *.iml
 .DS_Store
 Thumbs.db
+
+# Built APKs. Reproducible from source with the documented command; a 54 MB binary in
+# history would outlive every version of the code that produced it.
+*.apk
+
+# JVM crash dumps, written when the Gradle daemon is killed.
+hs_err_pid*.log
+replay_pid*.log
