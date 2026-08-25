@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/features/student/exam_attempt_screen.dart';
 import 'package:uniexam/features/student/widgets/exam_timer.dart';
 import 'package:uniexam/models/attempt.dart';
@@ -16,7 +17,7 @@ Widget wrap(Widget child, {required FakeStudentRepository student}) {
       // reach for a platform channel that does not exist here.
       examSecurityProvider.overrideWithValue(FakeExamSecurity()),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.light(), home: child),
   );
 }
 

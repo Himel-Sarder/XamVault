@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/models/exam.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 
 /// Colour-coded status chip. Draft and Published read very differently to a teacher, so
 /// the difference is carried by colour as well as by the word.
@@ -10,28 +12,18 @@ class ExamStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (background, foreground) = switch (status) {
-      ExamStatus.draft => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      ExamStatus.published => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      ExamStatus.running => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      ExamStatus.completed => (scheme.secondaryContainer, scheme.onSecondaryContainer),
-      ExamStatus.cancelled => (scheme.errorContainer, scheme.onErrorContainer),
+    final palette = context.status;
+    final colour = switch (status) {
+      // Not live yet, so it stays quiet.
+      ExamStatus.draft => palette.neutral,
+      // Live and visible to students.
+      ExamStatus.published => palette.info,
+      // Happening right now — the one a teacher should be able to spot at a glance.
+      ExamStatus.running => palette.success,
+      ExamStatus.completed => palette.neutral,
+      ExamStatus.cancelled => palette.danger,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-      ),
-    );
+    return StatusPill(label: status.label, colour: colour);
   }
 }
 
@@ -79,16 +71,68 @@ class ExamTile extends StatelessWidget {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${exam.durationMinutes} min  ·  '
-                '${exam.questionCount} question${exam.questionCount == 1 ? '' : 's'}  ·  '
-                '${exam.totalMarks} mark${exam.totalMarks == 1 ? '' : 's'}',
-                style: theme.textTheme.bodySmall,
+              const SizedBox(height: 10),
+              // Three separate facts, so they get three marks rather than one grey
+              // sentence a reader has to parse word by word.
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _Fact(
+                    icon: Icons.schedule,
+                    label: '${exam.durationMinutes} min',
+                    colour: context.status.info,
+                  ),
+                  _Fact(
+                    icon: Icons.help_outline,
+                    label: '${exam.questionCount} '
+                        'question${exam.questionCount == 1 ? '' : 's'}',
+                    colour: context.status.neutral,
+                  ),
+                  _Fact(
+                    icon: Icons.workspace_premium_outlined,
+                    label: '${exam.totalMarks} mark${exam.totalMarks == 1 ? '' : 's'}',
+                    colour: context.status.success,
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One small fact about an exam: an icon, a word, and a tint.
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.label, required this.colour});
+
+  final IconData icon;
+  final String label;
+  final StatusColor colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colour.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colour.foreground),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colour.foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }

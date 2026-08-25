@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/shared/dashboard_scaffold.dart';
+import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/features/student/widgets/student_exam_tile.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
@@ -29,6 +30,7 @@ class StudentDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Student Dashboard'),
         actions: [
+          const NotificationBell(),
           IconButton(
             key: const Key('my_results'),
             tooltip: 'My results',

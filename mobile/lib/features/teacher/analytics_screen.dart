@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/analytics.dart';
 import 'package:uniexam/providers/attempt_provider.dart';
+import 'package:uniexam/config/semantic_colours.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/section.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// How an exam and its questions performed (§45, §46).
@@ -47,13 +50,41 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(height: 16),
             _section(
               'Who sat it',
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+              Icons.groups_outlined,
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.1,
                 children: [
-                  _stat('Approved', '${data.cohort.approved}'),
-                  _stat('Submitted', '${data.cohort.submitted}'),
-                  _stat('In progress', '${data.cohort.inProgress}'),
-                  _stat('Absent', '${data.cohort.absent}'),
+                  MetricTile(
+                    label: 'Approved',
+                    value: '${data.cohort.approved}',
+                    icon: Icons.how_to_reg_outlined,
+                    colour: context.status.info,
+                  ),
+                  MetricTile(
+                    label: 'Submitted',
+                    value: '${data.cohort.submitted}',
+                    icon: Icons.task_alt,
+                    colour: context.status.success,
+                  ),
+                  MetricTile(
+                    label: 'In progress',
+                    value: '${data.cohort.inProgress}',
+                    icon: Icons.hourglass_bottom,
+                    colour: context.status.warning,
+                  ),
+                  MetricTile(
+                    label: 'Absent',
+                    value: '${data.cohort.absent}',
+                    icon: Icons.person_off_outlined,
+                    // Not red: a student who did not sit an exam is a fact to record,
+                    // not a failure to flag.
+                    colour: context.status.neutral,
+                  ),
                 ],
               ),
             ),
@@ -76,6 +107,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     if (!scores.hasData) {
       return _section(
         'Scores',
+        Icons.query_stats,
         // Not "0%" — that would read as "everyone failed" rather than "nobody sat it".
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
@@ -83,43 +115,54 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
       );
     }
+    // Each figure tinted by what it says about the cohort, so a low average is visible
+    // before it is read. The threshold is the teacher's, not a hard-coded 50.
     return _section(
       'Scores',
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      Icons.query_stats,
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 2.1,
         children: [
-          _stat('Average', '${scores.average!.toStringAsFixed(1)}%'),
-          _stat('Median', '${scores.median!.toStringAsFixed(1)}%'),
-          _stat('Highest', '${scores.highest!.toStringAsFixed(1)}%'),
-          _stat('Lowest', '${scores.lowest!.toStringAsFixed(1)}%'),
+          MetricTile(
+            label: 'Average',
+            value: '${scores.average!.toStringAsFixed(1)}%',
+            icon: Icons.timeline,
+            colour: scoreColour(context, scores.average!, pass: _passPercentage),
+          ),
+          MetricTile(
+            label: 'Median',
+            value: '${scores.median!.toStringAsFixed(1)}%',
+            icon: Icons.horizontal_rule,
+            colour: scoreColour(context, scores.median!, pass: _passPercentage),
+          ),
+          MetricTile(
+            label: 'Highest',
+            value: '${scores.highest!.toStringAsFixed(1)}%',
+            icon: Icons.trending_up,
+            colour: context.status.success,
+          ),
+          MetricTile(
+            label: 'Lowest',
+            value: '${scores.lowest!.toStringAsFixed(1)}%',
+            icon: Icons.trending_down,
+            colour: scoreColour(context, scores.lowest!, pass: _passPercentage),
+          ),
         ],
       ),
     );
   }
 
-  Widget _section(String title, Widget child) {
-    final theme = Theme.of(context);
+  Widget _section(String title, IconData icon, Widget child, {StatusColor? tint}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
+        SectionHeader(title: title, icon: icon, colour: tint),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: child)),
-      ],
-    );
-  }
-
-  Widget _stat(String label, String value) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(value, style: theme.textTheme.titleMedium),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
       ],
     );
   }
@@ -130,6 +173,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return _section(
       'Pass rate',
+      Icons.rule,
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -161,10 +205,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       child: Container(
                         height: 28,
                         alignment: Alignment.center,
-                        color: theme.colorScheme.primaryContainer,
+                        color: context.status.success.container,
                         child: Text(
                           '${data.passed}',
-                          style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+                          style: TextStyle(
+                              color: context.status.success.foreground,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -174,10 +220,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       child: Container(
                         height: 28,
                         alignment: Alignment.center,
-                        color: theme.colorScheme.errorContainer,
+                        color: context.status.danger.container,
                         child: Text(
                           '${data.failed}',
-                          style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                          style: TextStyle(
+                              color: context.status.danger.foreground,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -201,6 +249,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return _section(
       'Score distribution',
+      Icons.bar_chart,
       Column(
         children: [
           for (final bucket in data.distribution)
@@ -251,6 +300,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final theme = Theme.of(context);
     return _section(
       'Question by question',
+      Icons.checklist_rtl,
       Column(
         children: [
           for (final question in data.questions)

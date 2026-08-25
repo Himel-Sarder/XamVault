@@ -17,10 +17,27 @@ class CoursesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final courses = ref.watch(courseProvider);
-    final isTeacher = ref.watch(authProvider).user?.role == UserRole.teacher;
+    final role = ref.watch(authProvider).user?.role;
+    final isTeacher = role == UserRole.teacher;
+    final isAdmin = role == UserRole.admin;
+    // Both may create a course; the API says so, and each keeps to its own path prefix.
+    final createRoute = isTeacher
+        ? Routes.teacherCourseCreate
+        : (isAdmin ? Routes.adminCourseCreate : null);
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
+      floatingActionButton: createRoute == null
+          ? null
+          : FloatingActionButton.extended(
+              key: const Key('new_course'),
+              onPressed: () async {
+                await context.push(createRoute);
+                ref.invalidate(courseProvider);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('New course'),
+            ),
       body: courses.when(
         loading: () => const LoadingView(),
         error: (error, _) => ErrorView(
@@ -38,14 +55,17 @@ class CoursesScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(courseProvider.future),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: page.items.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, index) => CourseTile(
                 course: page.items[index],
                 onTap: isTeacher
                     ? () => context.push(Routes.teacherCourse(page.items[index].id))
-                    : null,
+                    : (isAdmin
+                        ? () => context
+                            .push(Routes.adminCourseEnrollments(page.items[index].id))
+                        : null),
               ),
             ),
           );

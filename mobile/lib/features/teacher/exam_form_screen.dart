@@ -199,16 +199,19 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            FilledButton(
-              key: const Key('exam_save'),
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : Text(widget.isEditing ? 'Save changes' : 'Create exam'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('exam_save'),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : Text(widget.isEditing ? 'Save changes' : 'Create exam'),
+              ),
             ),
           ],
         ),

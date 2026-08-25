@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/features/teacher/join_requests_screen.dart';
 import 'package:uniexam/models/student_exam.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -10,7 +11,7 @@ import 'fakes.dart';
 Widget wrap(Widget child, {required FakeExamRepository exams}) {
   return ProviderScope(
     overrides: [examRepositoryProvider.overrideWithValue(exams)],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.light(), home: child),
   );
 }
 

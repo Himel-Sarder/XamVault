@@ -242,14 +242,17 @@ class _JoinSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (canStart)
-          FilledButton.icon(
-            key: const Key('start_exam'),
-            onPressed: onStart,
-            icon: starting
-                ? const SizedBox(
-                    height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
-                : const Icon(Icons.play_arrow),
-            label: const Text('Start exam'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('start_exam'),
+              onPressed: onStart,
+              icon: starting
+                  ? const SizedBox(
+                      height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : const Icon(Icons.play_arrow),
+              label: const Text('Start exam'),
+            ),
           )
         else if (exam.isApproved && exam.availability == ExamAvailability.upcoming)
           Text(
@@ -258,17 +261,20 @@ class _JoinSection extends StatelessWidget {
             style: theme.textTheme.bodySmall,
           )
         else if (exam.canRequestJoin)
-          FilledButton.icon(
-            key: const Key('request_to_join'),
-            onPressed: requesting ? null : onRequest,
-            icon: requesting
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  )
-                : const Icon(Icons.how_to_reg_outlined),
-            label: const Text('Request to join'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('request_to_join'),
+              onPressed: requesting ? null : onRequest,
+              icon: requesting
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : const Icon(Icons.how_to_reg_outlined),
+              label: const Text('Request to join'),
+            ),
           )
         else if (exam.availability == ExamAvailability.closed)
           Text(

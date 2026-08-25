@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/features/student/exam_attempt_screen.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -17,7 +18,7 @@ Widget wrap(
       studentRepositoryProvider.overrideWithValue(student),
       examSecurityProvider.overrideWithValue(security),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.light(), home: child),
   );
 }
 

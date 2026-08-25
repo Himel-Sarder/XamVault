@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
@@ -41,6 +43,17 @@ class ProfileScreen extends ConsumerWidget {
                     _Row(label: 'Designation', value: user.teacherProfile!.designation!),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              key: const Key('profile_change_password'),
+              leading: const Icon(Icons.lock_reset_outlined),
+              title: const Text('Change password'),
+              subtitle: const Text('Signs you out on every other device'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.changePassword),
             ),
           ),
           const SizedBox(height: 24),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
 import 'package:uniexam/models/student_exam.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 
 /// Availability and request status carry different meanings, so they get different
 /// chips rather than one combined label.
@@ -11,13 +13,14 @@ class AvailabilityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (background, foreground) = switch (availability) {
-      ExamAvailability.upcoming => (scheme.secondaryContainer, scheme.onSecondaryContainer),
-      ExamAvailability.open => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      ExamAvailability.closed => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+    final palette = context.status;
+    final colour = switch (availability) {
+      ExamAvailability.upcoming => palette.info,
+      // Sittable now. This is the one a student is looking for.
+      ExamAvailability.open => palette.success,
+      ExamAvailability.closed => palette.neutral,
     };
-    return _Pill(label: availability.label, background: background, foreground: foreground);
+    return StatusPill(label: availability.label, colour: colour);
   }
 }
 
@@ -28,44 +31,15 @@ class JoinStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (background, foreground) = switch (status) {
-      JoinRequestStatus.none => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      JoinRequestStatus.pending => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      JoinRequestStatus.approved => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      JoinRequestStatus.rejected => (scheme.errorContainer, scheme.onErrorContainer),
+    final palette = context.status;
+    final colour = switch (status) {
+      JoinRequestStatus.none => palette.neutral,
+      // Waiting on a teacher. Amber is what a reader already reads as "not yet".
+      JoinRequestStatus.pending => palette.warning,
+      JoinRequestStatus.approved => palette.success,
+      JoinRequestStatus.rejected => palette.danger,
     };
-    return _Pill(label: status.label, background: background, foreground: foreground);
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-      ),
-    );
+    return StatusPill(label: status.label, colour: colour);
   }
 }
 

@@ -26,6 +26,23 @@ class CourseDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(course?.courseCode ?? 'Course'),
+        actions: [
+          IconButton(
+            key: const Key('course_enrollments'),
+            tooltip: 'Enrolled students',
+            onPressed: () => context.push(Routes.teacherCourseEnrollments(courseId)),
+            icon: const Icon(Icons.group_outlined),
+          ),
+          IconButton(
+            key: const Key('edit_course'),
+            tooltip: 'Edit course',
+            onPressed: () async {
+              await context.push(Routes.teacherCourseEdit(courseId));
+              ref.invalidate(courseProvider);
+            },
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
         bottom: course == null
             ? null
             : PreferredSize(

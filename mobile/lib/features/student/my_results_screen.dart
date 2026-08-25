@@ -6,6 +6,9 @@ import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
 import 'package:uniexam/models/exam_result.dart';
 import 'package:uniexam/providers/attempt_provider.dart';
+import 'package:uniexam/config/semantic_colours.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/section.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// A student's released marks. Unreleased results are not returned by the API at all,
@@ -89,32 +92,69 @@ class _ResultCardState extends ConsumerState<_ResultCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    // A neutral band rather than a pass/fail verdict: the passing mark is a policy the
-    // university sets, and the platform does not know it.
-    final tone = result.percentage >= 50 ? scheme.primary : scheme.error;
+    // A band, not a verdict: the passing mark is a policy the university sets and this
+    // app is never told it, so the colour grades by achievement and never reaches red.
+    final tone = achievementColour(context, result.percentage);
+    final fraction =
+        result.totalMarks == 0 ? 0.0 : result.totalScore / result.totalMarks;
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Text(result.courseCode, style: theme.textTheme.labelLarge)),
-                Text(
-                  '${result.percentage.toStringAsFixed(1)}%',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(color: tone, fontWeight: FontWeight.w700),
+                // The score is the reason this card exists, so it is the biggest thing
+                // on it rather than a number in the corner.
+                Container(
+                  width: 78,
+                  height: 78,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tone.container,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // The exact figure, not a rounded one: a student comparing
+                      // 79.5% with 80.0% is entitled to see the difference.
+                      Text(
+                        '${result.percentage.toStringAsFixed(1)}%',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: tone.foreground,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.courseCode,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: context.accents.forKey(result.courseCode).foreground,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(result.examTitle, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 10),
+                      MeterBar(fraction: fraction, colour: tone),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            const SizedBox(height: 4),
-            Text(result.examTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: result.totalMarks == 0 ? 0 : result.totalScore / result.totalMarks,
-              backgroundColor: scheme.surfaceContainerHighest,
             ),
             const SizedBox(height: 12),
             Text(

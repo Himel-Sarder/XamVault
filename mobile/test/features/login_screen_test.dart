@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/token_store.dart';
 import 'package:uniexam/features/auth/login_screen.dart';
@@ -15,7 +16,7 @@ Widget _wrap(FakeAuthRepository authRepository) {
       tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
       authRepositoryProvider.overrideWithValue(authRepository),
     ],
-    child: const MaterialApp(home: LoginScreen()),
+    child: MaterialApp(theme: AppTheme.light(), home: LoginScreen()),
   );
 }
 
@@ -45,7 +46,7 @@ void main() {
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
-            return const MaterialApp(home: LoginScreen());
+            return MaterialApp(theme: AppTheme.light(), home: LoginScreen());
           },
         ),
       ),
@@ -80,7 +81,7 @@ void main() {
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
-            return const MaterialApp(home: LoginScreen());
+            return MaterialApp(theme: AppTheme.light(), home: LoginScreen());
           },
         ),
       ),
@@ -111,7 +112,7 @@ void main() {
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
-            return const MaterialApp(home: LoginScreen());
+            return MaterialApp(theme: AppTheme.light(), home: LoginScreen());
           },
         ),
       ),
