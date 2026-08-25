@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
+import 'package:uniexam/config/semantic_colours.dart';
 import 'package:uniexam/models/notification.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
@@ -111,20 +112,38 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    // The category's own colour, so a rejection and a result do not arrive looking
+    // identical. A read notification keeps the hue but drops the fill, which is enough
+    // to tell the two apart without repainting the row grey.
+    final tint = notification.category.colour(context);
+
     return Card(
-      // Unread is tinted rather than badged: the whole row is the signal.
-      color: notification.isRead ? null : scheme.primaryContainer.withValues(alpha: 0.35),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 92,
+            color: notification.isRead ? Colors.transparent : tint.foreground,
+          ),
+          Expanded(
+            child: ListTile(
         key: Key('notification_${notification.id}'),
         onTap: () => _open(notification),
-        leading: CircleAvatar(
-          backgroundColor: notification.isRead
-              ? scheme.surfaceContainerHighest
-              : scheme.primaryContainer,
+        leading: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: notification.isRead
+                ? scheme.surfaceContainerHigh
+                : tint.container,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Icon(
             notification.category.icon,
             size: 20,
-            color: notification.isRead ? scheme.onSurfaceVariant : scheme.onPrimaryContainer,
+            color: notification.isRead ? scheme.onSurfaceVariant : tint.foreground,
           ),
         ),
         title: Text(
@@ -147,6 +166,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ),
         isThreeLine: true,
         trailing: notification.examId == null ? null : const Icon(Icons.chevron_right),
+            ),
+          ),
+        ],
       ),
     );
   }

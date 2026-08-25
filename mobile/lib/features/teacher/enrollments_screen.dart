@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/enrollment.dart';
 import 'package:uniexam/providers/course_provider.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
@@ -256,13 +257,27 @@ class _EnrollmentsScreenState extends ConsumerState<EnrollmentsScreen> {
 
     return Card(
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.secondaryContainer,
-          child: Icon(
-            Icons.person_outline,
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-        ),
+        // Each student their own tint, keyed on the ID, so a roll of sixty reads as
+        // sixty people rather than one row repeated.
+        leading: Builder(builder: (context) {
+          final tint = context.accents.forKey(student?.userId ?? '${enrollment.studentId}');
+          return Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: tint.container,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _initials(student?.name),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: tint.foreground,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          );
+        }),
         title: Text(student?.name ?? 'Student #${enrollment.studentId}'),
         subtitle: Text(student?.userId ?? 'ID unavailable'),
         trailing: busy
@@ -366,4 +381,12 @@ class _BulkEnrolDialogState extends State<_BulkEnrolDialog> {
       ],
     );
   }
+}
+
+/// Two letters is enough to recognise a name you already know.
+String _initials(String? name) {
+  final parts = (name ?? '').trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
 }

@@ -5,6 +5,9 @@ import 'package:uniexam/models/bank_question.dart';
 import 'package:uniexam/models/question.dart';
 import 'package:uniexam/providers/exam_provider.dart';
 import 'package:uniexam/providers/providers.dart';
+import 'package:uniexam/config/semantic_colours.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// The teacher's reusable question library (§6).
@@ -310,10 +313,18 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                         color: selected ? theme.colorScheme.primary : theme.colorScheme.outline,
                       ),
                     ),
+                  // The type is what a teacher filters and scans by, so it reads as a
+                  // marked chip rather than a word in a row of words.
                   Expanded(
-                    child: Text(question.type.label, style: theme.textTheme.labelMedium),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _TypeChip(type: question.type),
+                    ),
                   ),
-                  Text('${question.marks} marks', style: theme.textTheme.labelMedium),
+                  StatusPill(
+                    label: '${question.marks} marks',
+                    colour: context.status.success,
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -366,6 +377,40 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The question's type, in its own colour. The same colour is used by the filter row
+/// above, so choosing a filter and recognising a result are the same visual act.
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({required this.type});
+
+  final QuestionType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = type.colour(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: colour.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(type.icon, size: 14, color: colour.foreground),
+          const SizedBox(width: 5),
+          Text(
+            type.label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colour.foreground,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
       ),
     );
   }

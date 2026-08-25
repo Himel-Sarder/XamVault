@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/config/theme.dart';
 
 /// A centred spinner with an optional caption.
 class LoadingView extends StatelessWidget {
@@ -23,6 +24,32 @@ class LoadingView extends StatelessWidget {
   }
 }
 
+/// The icon block shared by the empty and error states.
+///
+/// A bare 48px glyph on a white field is the cheapest-looking thing in any app; sitting
+/// it in a tinted, rounded square costs nothing and makes an empty screen look designed
+/// rather than unfinished.
+class _Glyph extends StatelessWidget {
+  const _Glyph({required this.icon, required this.colour});
+
+  final IconData icon;
+  final StatusColor colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: colour.container,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Icon(icon, size: 34, color: colour.foreground),
+    );
+  }
+}
+
 /// Failure state with a retry affordance.
 class ErrorView extends StatelessWidget {
   const ErrorView({super.key, required this.message, this.onRetry});
@@ -32,19 +59,19 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off_outlined, size: 48, color: scheme.error),
-            const SizedBox(height: 16),
+            _Glyph(icon: Icons.cloud_off_rounded, colour: context.status.danger),
+            const SizedBox(height: 20),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: theme.textTheme.bodyLarge,
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 20),
@@ -63,11 +90,21 @@ class ErrorView extends StatelessWidget {
 
 /// Shown where a list has nothing in it yet.
 class EmptyView extends StatelessWidget {
-  const EmptyView({super.key, required this.title, this.subtitle, this.icon});
+  const EmptyView({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.icon,
+    this.action,
+  });
 
   final String title;
   final String? subtitle;
   final IconData? icon;
+
+  /// An empty list is usually a place where something *should* be created, so the
+  /// screen may offer the way to do it instead of only reporting the absence.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +115,9 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon ?? Icons.inbox_outlined,
-                size: 48, color: theme.colorScheme.outline),
-            const SizedBox(height: 16),
+            // Info, not error: nothing has gone wrong here.
+            _Glyph(icon: icon ?? Icons.inbox_rounded, colour: context.status.info),
+            const SizedBox(height: 20),
             Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
@@ -90,6 +127,10 @@ class EmptyView extends StatelessWidget {
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
+            ],
+            if (action != null) ...[
+              const SizedBox(height: 20),
+              action!,
             ],
           ],
         ),

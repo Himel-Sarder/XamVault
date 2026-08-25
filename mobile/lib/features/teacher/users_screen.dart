@@ -5,6 +5,7 @@ import 'package:uniexam/models/department.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/admin_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
@@ -154,25 +155,36 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 
   Widget _tile(User user) {
-    final theme = Theme.of(context);
     final busy = _busyId == user.id;
+    final roleColour = user.isActive
+        ? switch (user.role) {
+            UserRole.admin => context.accents.accents[5],
+            UserRole.teacher => context.accents.accents[3],
+            UserRole.student => context.accents.accents[0],
+          }
+        : context.status.neutral;
 
     return Card(
       child: ListTile(
         key: Key('user_${user.id}'),
-        leading: CircleAvatar(
-          backgroundColor: user.isActive
-              ? theme.colorScheme.secondaryContainer
-              : theme.colorScheme.surfaceContainerHighest,
+        // Colour by role, so a directory of sixty is scannable. A deactivated account
+        // drops to neutral: the role still shows, but the row reads as switched off.
+        leading: Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: roleColour.container,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Icon(
             switch (user.role) {
               UserRole.admin => Icons.shield_outlined,
               UserRole.teacher => Icons.school_outlined,
               UserRole.student => Icons.person_outline,
             },
-            color: user.isActive
-                ? theme.colorScheme.onSecondaryContainer
-                : theme.colorScheme.onSurfaceVariant,
+            size: 20,
+            color: roleColour.foreground,
           ),
         ),
         title: Text(user.name),

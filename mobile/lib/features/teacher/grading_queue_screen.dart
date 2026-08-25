@@ -5,6 +5,9 @@ import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
 import 'package:uniexam/providers/attempt_provider.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/section.dart';
+import 'package:uniexam/widgets/status_pill.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// Who has submitted, and how much of each paper still needs a person to mark it.
@@ -16,7 +19,6 @@ class GradingQueueScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(gradingQueueProvider(examId));
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Marking')),
@@ -40,21 +42,42 @@ class GradingQueueScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      outstanding == 0 ? Icons.task_alt : Icons.pending_actions_outlined,
-                      color: theme.colorScheme.primary,
+                // Amber while work is outstanding, green once it is not. A teacher
+                // opening this screen wants that answer before they read a word.
+                Row(
+                  children: [
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Still to mark',
+                        value: '$outstanding',
+                        icon: Icons.pending_actions_outlined,
+                        colour: outstanding == 0
+                            ? context.status.success
+                            : context.status.warning,
+                      ),
                     ),
-                    title: Text(
-                      outstanding == 0
-                          ? 'Everything is marked'
-                          : '$outstanding paper${outstanding == 1 ? '' : 's'} still to mark',
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Submitted',
+                        value: '${items.length}',
+                        icon: Icons.inbox_rounded,
+                        colour: context.status.info,
+                      ),
                     ),
-                    subtitle: Text('${items.length} submitted'),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+                // The tiles give the number; this gives the sentence. A count alone
+                // makes a reader do the pluralising, and it is what a screen reader
+                // announces most usefully.
+                Text(
+                  outstanding == 0
+                      ? 'Everything is marked'
+                      : '$outstanding paper${outstanding == 1 ? '' : 's'} still to mark',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
                 for (final entry in items)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -64,29 +87,38 @@ class GradingQueueScreen extends ConsumerWidget {
                         onTap: () => context.push(
                           Routes.teacherAttemptGrading(examId, entry.attemptId),
                         ),
-                        leading: CircleAvatar(
-                          backgroundColor: entry.isFullyMarked
-                              ? theme.colorScheme.primaryContainer
-                              : theme.colorScheme.tertiaryContainer,
-                          child: Icon(
-                            entry.isFullyMarked ? Icons.check : Icons.edit_outlined,
-                            size: 18,
-                            color: entry.isFullyMarked
-                                ? theme.colorScheme.onPrimaryContainer
-                                : theme.colorScheme.onTertiaryContainer,
-                          ),
-                        ),
+                        leading: Builder(builder: (context) {
+                          final tint = entry.isFullyMarked
+                              ? context.status.success
+                              : context.status.warning;
+                          return Container(
+                            width: 42,
+                            height: 42,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: tint.container,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              entry.isFullyMarked ? Icons.check : Icons.edit_outlined,
+                              size: 19,
+                              color: tint.foreground,
+                            ),
+                          );
+                        }),
                         title: Text(entry.studentName),
                         subtitle: Text(
                           '${entry.studentNumber} · submitted '
                           '${formatDateTime(entry.submittedAt)}',
                         ),
-                        trailing: Text(
-                          entry.isFullyMarked
+                        trailing: StatusPill(
+                          label: entry.isFullyMarked
                               ? '${entry.totalScore.toStringAsFixed(entry.totalScore % 1 == 0 ? 0 : 1)}'
                                   '/${entry.totalMarks}'
                               : '${entry.awaitingMarks} to mark',
-                          style: theme.textTheme.labelLarge,
+                          colour: entry.isFullyMarked
+                              ? context.status.success
+                              : context.status.warning,
                         ),
                       ),
                     ),

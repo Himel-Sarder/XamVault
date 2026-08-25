@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/department.dart';
 import 'package:uniexam/providers/course_provider.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
@@ -124,26 +125,27 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
   }
 
   Widget _tile(Department department) {
-    final theme = Theme.of(context);
     final busy = _busyId == department.id;
+    final tint = department.isActive
+        ? context.accents.forKey(department.code)
+        : context.status.neutral;
 
     return Card(
       child: ListTile(
         key: Key('department_${department.id}'),
-        leading: CircleAvatar(
-          backgroundColor: department.isActive
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest,
-          child: Text(
-            department.code.characters.take(2).toString().toUpperCase(),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: department.isActive
-                  ? theme.colorScheme.onPrimaryContainer
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
+        // Its own colour, from the same palette courses draw on, so a department and
+        // the courses under it are recognisably related rather than uniformly grey.
+        leading: Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tint.container,
+            borderRadius: BorderRadius.circular(12),
           ),
+          // An icon rather than the code: the subtitle already carries the code, and
+          // printing it twice in one row helps nobody.
+          child: Icon(Icons.apartment_rounded, size: 20, color: tint.foreground),
         ),
         title: Text(department.name),
         subtitle: Text(
