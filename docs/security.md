@@ -96,9 +96,21 @@ concern — Flutter renders text into `Text` widgets, never into a WebView.
 
 Accepted only when *all* hold: extension allow-list, MIME sniffed from content (not the
 `Content-Type` header), decoded successfully as an image by Pillow, dimensions within
-bounds, size under the cap. The stored filename is a server-generated UUID — the
-client-supplied name is never used as a path component, which is what makes path traversal
-impossible rather than merely unlikely.
+bounds, size under the cap. The address is a server-generated UUID — the client-supplied
+name is never used anywhere in it, which is what makes path traversal impossible rather
+than merely unlikely. There is in fact no path at all now: the bytes are a row in
+`uploaded_images`, because the deployment target has no persistent disk and a file
+written to the container is lost when the instance is replaced.
+
+Serving that row is **deliberately unauthenticated**. An `<img>` cannot attach a bearer
+token, so requiring one would mean no question image ever renders. What is exposed is a
+diagram a teacher chose for a paper, addressed by a random 32-character id that is
+neither guessable nor enumerable. The correct answer, the marks, and every judgement
+about a student stay behind authentication, which is where the sensitivity actually is.
+
+Deletion refuses while any question or option still refers to the image. The reference is
+a URL string rather than a foreign key, so the database would not stop a tidy-up taking
+the diagram out of a published paper.
 
 ## 8. Code execution (phase 15)
 

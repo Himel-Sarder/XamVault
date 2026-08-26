@@ -189,6 +189,15 @@ class ExamRepository {
 
   /// Uploads one image and returns the URL to store on the question or option.
   /// The server decodes the bytes before storing them, so a mislabelled file fails here.
+  /// Removes an uploaded image the server is still holding.
+  ///
+  /// Refused with 409 while any question points at it, which is what stops a tidy-up
+  /// taking the diagram out of a published paper.
+  Future<void> deleteImage(String url) {
+    final name = url.split('/').last;
+    return _api.delete('/questions/upload-image/$name');
+  }
+
   Future<String> uploadImage({required List<int> bytes, required String filename}) async {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),

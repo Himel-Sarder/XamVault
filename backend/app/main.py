@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -19,6 +18,7 @@ from app.core.rate_limit import limiter
 from app.middleware import RequestContextMiddleware, SecurityHeadersMiddleware
 from app.routers import api_router
 from app.routers import health as health_router
+from app.routers import media
 
 logger = logging.getLogger("uniexam")
 
@@ -82,18 +82,17 @@ def create_app() -> FastAPI:
         )
 
     # --- uploaded files ---
-    # Development convenience only. In production UPLOAD_DIR is replaced by object
-    # storage and this mount goes away (docs/architecture.md §5).
-    if not settings.is_production:
-        settings.upload_path.mkdir(parents=True, exist_ok=True)
-        app.mount(
-            "/uploads",
-            StaticFiles(directory=settings.upload_path),
-            name="uploads",
-        )
+    # Served from the database by app/routers/media.py, in every environment.
+    #
+    # This used to be a StaticFiles mount guarded by `if not settings.is_production`,
+    # on the assumption that production would have object storage by now. It does not,
+    # so the guard meant every question image returned 404 on the deployed app while
+    # working perfectly in development -- the worst shape a bug can take. Dev and
+    # production now take the same path.
 
     # --- routes ---
     app.include_router(health_router.router)
+    app.include_router(media.router)
     app.include_router(api_router)
 
     @app.get("/", include_in_schema=False)

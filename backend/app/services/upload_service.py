@@ -10,13 +10,17 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
 
 from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import InvalidRequestError
+from app.core.exceptions import ConflictError, InvalidRequestError, NotFoundError
+from app.models.question import Question, QuestionOption
+from app.models.upload import UploadedImage
+from app.models.user import User
 
 # Formats Pillow must report after decoding, mapped to the extension we store under.
 ALLOWED_FORMATS: dict[str, str] = {
@@ -33,6 +37,16 @@ MAX_DIMENSION = 4096
 CHUNK_SIZE = 64 * 1024
 
 
+# What each accepted format is served back as. Taken from what Pillow decoded, never
+# from the filename or the Content-Type header the client sent.
+CONTENT_TYPES: dict[str, str] = {
+    "PNG": "image/png",
+    "JPEG": "image/jpeg",
+    "GIF": "image/gif",
+    "WEBP": "image/webp",
+}
+
+
 @dataclass(frozen=True, slots=True)
 class StoredImage:
     url: str
@@ -42,22 +56,78 @@ class StoredImage:
 
 
 class UploadService:
-    def __init__(self, directory: Path | None = None) -> None:
-        self.directory = directory or settings.upload_path
-        self.directory.mkdir(parents=True, exist_ok=True)
+    """Stores images in the database.
 
-    async def save_image(self, upload: UploadFile) -> StoredImage:
+    Not on disk: the deployment target has no persistent volume, so a file written to
+    the container is lost when the instance is replaced. See :class:`UploadedImage` for
+    the reasoning and the intended migration path.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    async def save_image(self, upload: UploadFile, uploader: User) -> StoredImage:
         payload = await self._read_within_limit(upload)
         image_format, width, height = self._decode(payload)
 
-        # The client's filename is never used as a path component, which is what makes
-        # traversal impossible rather than merely unlikely.
-        name = f"{uuid.uuid4().hex}{ALLOWED_FORMATS[image_format]}"
-        (self.directory / name).write_bytes(payload)
+        # The client's filename is never used anywhere in the address, which is what
+        # makes traversal impossible rather than merely unlikely.
+        image = UploadedImage(
+            id=uuid.uuid4().hex,
+            content_type=CONTENT_TYPES[image_format],
+            extension=ALLOWED_FORMATS[image_format],
+            width=width,
+            height=height,
+            byte_size=len(payload),
+            data=payload,
+            uploaded_by=uploader.id,
+        )
+        self.db.add(image)
+        self.db.commit()
 
         return StoredImage(
-            url=f"/uploads/{name}", width=width, height=height, bytes=len(payload)
+            url=image.url, width=width, height=height, bytes=len(payload)
         )
+
+    def get(self, name: str) -> UploadedImage:
+        """Looks an image up by the filename part of its URL."""
+        image_id = name.rsplit(".", 1)[0]
+        image = self.db.get(UploadedImage, image_id)
+        if image is None:
+            raise NotFoundError("Image not found")
+        return image
+
+    def delete(self, name: str, actor: User) -> None:
+        """Removes an image, unless a question still points at it.
+
+        The reference is a URL string rather than a foreign key, so the database will
+        not stop this on its own. Checking here is what keeps a published paper from
+        losing its diagram because someone tidied up an upload they thought was spare.
+        """
+        image = self.get(name)
+        if not (actor.is_admin or image.uploaded_by == actor.id):
+            # Not yours, and whether it exists is not your business either.
+            raise NotFoundError("Image not found")
+
+        url = image.url
+        in_use = self.db.execute(
+            select(func.count())
+            .select_from(Question)
+            .where(Question.question_image_url == url)
+        ).scalar_one() + self.db.execute(
+            select(func.count())
+            .select_from(QuestionOption)
+            .where(QuestionOption.option_image_url == url)
+        ).scalar_one()
+        if in_use:
+            raise ConflictError(
+                "This image is still used by a question, so it was not deleted. "
+                "Remove it from the question first.",
+                code="image_in_use",
+            )
+
+        self.db.delete(image)
+        self.db.commit()
 
     async def _read_within_limit(self, upload: UploadFile) -> bytes:
         limit = settings.max_upload_size_bytes

@@ -26,6 +26,7 @@ from app.models.question import Question, QuestionOption
 from app.models.refresh_token import RefreshToken
 from app.models.result import Result
 from app.models.security_event import SecurityEvent
+from app.models.upload import UploadedImage
 from app.models.user import StudentProfile, TeacherProfile, User
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "Result",
     "ResultStatus",
     "SecurityEvent",
+    "UploadedImage",
     "SecurityEventType",
     "SecuritySeverity",
     "StudentAnswer",

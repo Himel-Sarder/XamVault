@@ -537,7 +537,13 @@ def image_mcq_payload(*, image_url: str, marks: int = 5,
 
 @pytest.fixture
 def upload_dir(tmp_path, monkeypatch):
-    """Point uploads at a temporary directory so tests never touch backend/uploads."""
+    """Kept for the tests that merely need *an* image to exist.
+
+    Images are stored in the database now, so there is no directory to redirect and
+    nothing here to isolate — the per-test truncation already handles that. The fixture
+    stays so the many tests that just want a valid upload keep reading naturally, and
+    because removing it would be a large diff about nothing.
+    """
     from app.core.config import settings as app_settings
 
     monkeypatch.setattr(app_settings, "UPLOAD_DIR", str(tmp_path))

@@ -506,6 +506,14 @@ class FakeExamRepository implements ExamRepository {
     return get(examId);
   }
 
+  final List<String> deletedImages = [];
+
+  @override
+  Future<void> deleteImage(String url) async {
+    _maybeFail();
+    deletedImages.add(url);
+  }
+
   final List<int> deletedExams = [];
   final List<int> cancelledExams = [];
 

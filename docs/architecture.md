@@ -137,7 +137,7 @@ flowchart LR
     Dev["Developer<br/>flutter run"] --> RB
     Phone["Student / Teacher device"] --> RB
     RB["Render Web Service<br/>uvicorn app.main:app"] --> RDB[("Render PostgreSQL")]
-    RB --> UP["uploads/ (dev)<br/>object storage (prod)"]
+    RB --> UP["uploaded_images table<br/>(bytes in PostgreSQL)"]
     RB -.->|/health| Probe["Render health check"]
 ```
 

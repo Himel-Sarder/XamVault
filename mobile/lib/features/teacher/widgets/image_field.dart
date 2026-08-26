@@ -56,6 +56,21 @@ class _ImageFieldState extends ConsumerState<ImageField> {
     }
   }
 
+  /// Drops the image from the question, and asks the server to forget it.
+  ///
+  /// The reference goes first and unconditionally: the teacher asked for it gone from
+  /// their question, and that must not depend on a network call. Removing the stored
+  /// file is a tidy-up on top — if it fails, or the server refuses because another
+  /// question still uses those bytes, the question is already correct either way.
+  Future<void> _remove(String url) async {
+    widget.onChanged(null);
+    try {
+      await ref.read(examRepositoryProvider).deleteImage(url);
+    } on ApiException {
+      // Deliberately silent. An orphaned row is not worth interrupting a teacher over.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -96,7 +111,8 @@ class _ImageFieldState extends ConsumerState<ImageField> {
             if (url != null && url.isNotEmpty) ...[
               const SizedBox(width: 8),
               TextButton(
-                onPressed: _busy ? null : () => widget.onChanged(null),
+                key: Key('remove_${widget.label}'),
+                onPressed: _busy ? null : () => _remove(url),
                 child: const Text('Remove'),
               ),
             ],
