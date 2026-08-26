@@ -312,3 +312,90 @@ def test_the_newest_notification_comes_first(
 
     titles = [item["title"] for item in _inbox(client, api, auth_headers, student)["items"]]
     assert "Newest" in titles[0]
+
+
+# ------------------------------------------------------- clearing the inbox
+
+
+def _publish(client, api, auth_headers, teacher, course, make_exam, title="Clearing Test"):
+    """Publishes a real exam, which is what actually puts news in an inbox.
+
+    Enrolment is the caller's job and happens once: a student holds one place per
+    course, so enrolling inside here would break the second call.
+    """
+    exam = make_exam(teacher, course, title=title)
+    headers = auth_headers(teacher)
+    client.post(f"{api}/exams/{exam.id}/questions", headers=headers, json=mcq_payload())
+    assert client.post(f"{api}/exams/{exam.id}/publish", headers=headers).status_code == 200
+    return exam
+
+
+def test_a_notification_can_be_removed_from_my_inbox(
+    client, api, auth_headers, teacher, teacher_course, student, enroll, make_exam
+):
+    enroll(teacher_course, student)
+    _publish(client, api, auth_headers, teacher, teacher_course, make_exam)
+    inbox = _inbox(client, api, auth_headers, student)
+    first = inbox["items"][0]["id"]
+
+    assert client.delete(
+        f"{api}/notifications/{first}", headers=auth_headers(student)
+    ).status_code == 204
+    assert first not in [
+        item["id"] for item in _inbox(client, api, auth_headers, student)["items"]
+    ]
+
+
+def test_deleting_a_notification_does_not_touch_what_it_was_about(
+    client, api, auth_headers, teacher, teacher_course, student, enroll, make_exam
+):
+    """A notification is a copy of news, not the news itself."""
+    enroll(teacher_course, student)
+    exam = _publish(client, api, auth_headers, teacher, teacher_course, make_exam)
+    inbox = _inbox(client, api, auth_headers, student)
+    client.delete(
+        f"{api}/notifications/{inbox['items'][0]['id']}", headers=auth_headers(student)
+    )
+
+    assert client.get(
+        f"{api}/exams/{exam.id}", headers=auth_headers(student)
+    ).status_code == 200
+
+
+def test_i_cannot_delete_someone_elses_notification(
+    client, api, auth_headers, teacher, teacher_course, student, other_student,
+    enroll, make_exam,
+):
+    enroll(teacher_course, student)
+    _publish(client, api, auth_headers, teacher, teacher_course, make_exam)
+    target = _inbox(client, api, auth_headers, student)["items"][0]["id"]
+
+    # Scoped by user, so it is not found rather than forbidden.
+    assert client.delete(
+        f"{api}/notifications/{target}", headers=auth_headers(other_student)
+    ).status_code == 404
+
+
+def test_clearing_read_leaves_the_unread_alone(
+    client, api, auth_headers, teacher, teacher_course, student, enroll, make_exam
+):
+    enroll(teacher_course, student)
+    _publish(client, api, auth_headers, teacher, teacher_course, make_exam, 'First')
+    _publish(client, api, auth_headers, teacher, teacher_course, make_exam, 'Second')
+
+    inbox = _inbox(client, api, auth_headers, student)
+    assert inbox["total"] == 2
+    client.post(
+        f"{api}/notifications/{inbox['items'][0]['id']}/read", headers=auth_headers(student)
+    )
+
+    cleared = client.request(
+        "DELETE", f"{api}/notifications/read", headers=auth_headers(student)
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["cleared"] == 1
+
+    left = _inbox(client, api, auth_headers, student)
+    # Clearing must never remove something the reader has not seen yet.
+    assert left["total"] == 1
+    assert all(not item["is_read"] for item in left["items"])

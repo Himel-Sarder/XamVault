@@ -15,7 +15,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError
@@ -86,6 +86,40 @@ class NotificationService:
             update(Notification)
             .where(Notification.user_id == user.id, Notification.is_read.is_(False))
             .values(is_read=True, read_at=datetime.now(UTC))
+        )
+        self.db.commit()
+        return result.rowcount or 0
+
+    def delete(self, notification_id: int, user: User) -> None:
+        """Removes one notification from your own inbox.
+
+        Safe to delete outright, unlike most things in this app: a notification is a
+        copy of news, not the news itself. Removing "your result is available" does not
+        touch the result, and the exam, the attempt and the marks are all still there.
+        """
+        notification = self.db.execute(
+            select(Notification).where(
+                Notification.id == notification_id, Notification.user_id == user.id
+            )
+        ).scalar_one_or_none()
+        if notification is None:
+            # Scoped by user_id, so someone else's notification is not found rather
+            # than forbidden — the same rule mark_read follows.
+            raise NotFoundError("Notification not found")
+        self.db.delete(notification)
+        self.db.commit()
+
+    def clear_read(self, user: User) -> int:
+        """Clears the ones already seen, and only those.
+
+        Deliberately never touches unread notifications: "clear" should not be able to
+        remove something the person has not read yet, which is exactly the thing they
+        were most likely keeping.
+        """
+        result = self.db.execute(
+            delete(Notification).where(
+                Notification.user_id == user.id, Notification.is_read.is_(True)
+            )
         )
         self.db.commit()
         return result.rowcount or 0

@@ -34,6 +34,20 @@ class AttemptRepository:
             .options(selectinload(ExamAttempt.answers))
         ).scalar_one_or_none()
 
+    def count_for_exam(self, exam_id: int) -> int:
+        """How many attempts exist against this exam, in any state.
+
+        The question behind "is anything riding on this exam" — one abandoned attempt
+        is still a student's record.
+        """
+        return int(
+            self.db.execute(
+                select(func.count())
+                .select_from(ExamAttempt)
+                .where(ExamAttempt.exam_id == exam_id)
+            ).scalar_one()
+        )
+
     def count_for(self, exam_id: int, student_id: int) -> int:
         """Every sitting, finished or not — this is what ``max_attempts`` limits."""
         return self.db.execute(

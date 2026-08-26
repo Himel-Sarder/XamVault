@@ -172,8 +172,21 @@ def update_settings(
     return _exam_response(ExamService(db).update_settings(exam_id, payload, current_user))
 
 
+@router.post(
+    "/{exam_id}/cancel",
+    response_model=TeacherExamResponse,
+    summary="Cancel an exam without losing what it produced (exam owner)",
+)
+def cancel_exam(exam_id: int, current_user: TeacherUser, db: DbSession) -> object:
+    """For an exam students have already sat, where deleting would take their records
+    with it. Attempts, answers and results all stay; no new sitting can begin."""
+    return ExamService(db).cancel(exam_id, current_user)
+
+
 @router.delete(
-    "/{exam_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a draft exam"
+    "/{exam_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an exam nobody has sat (exam owner)",
 )
 def delete_exam(exam_id: int, current_user: TeacherUser, db: DbSession) -> Response:
     ExamService(db).delete(exam_id, current_user)

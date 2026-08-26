@@ -34,6 +34,19 @@ class NotificationRepository {
     return AppNotification.fromJson(data);
   }
 
+  /// Removes one notification from your own inbox.
+  ///
+  /// Safe to delete outright, unlike most things in this app: a notification is a copy
+  /// of news, not the news itself. Removing "your result is available" leaves the
+  /// result exactly where it was.
+  Future<void> delete(int id) => _api.delete('/notifications/$id');
+
+  /// Clears the ones already seen, and only those.
+  Future<int> clearRead() async {
+    final data = await _api.deleteWithResult<Map<String, dynamic>>('/notifications/read');
+    return data['cleared'] as int? ?? 0;
+  }
+
   Future<int> markAllRead() async {
     final data = await _api.post<Map<String, dynamic>>('/notifications/read-all');
     return data['updated'] as int;

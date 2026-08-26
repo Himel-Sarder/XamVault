@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.core.deps import CurrentUser, DbSession
 from app.schemas.common import Page, PageParams
@@ -57,6 +57,31 @@ def list_notifications(
         page=page.page,
         page_size=page.page_size,
     )
+
+
+@router.delete(
+    "/read",
+    summary="Clear the notifications I have already read",
+)
+def clear_read(current_user: CurrentUser, db: DbSession) -> dict[str, int]:
+    """Declared before /{notification_id} so "read" is never parsed as an id.
+
+    Unread notifications are left alone: clearing should not be able to remove
+    something the reader has not seen yet.
+    """
+    return {"cleared": NotificationService(db).clear_read(current_user)}
+
+
+@router.delete(
+    "/{notification_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove one notification from my inbox",
+)
+def delete_notification(
+    notification_id: int, current_user: CurrentUser, db: DbSession
+) -> Response:
+    NotificationService(db).delete(notification_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

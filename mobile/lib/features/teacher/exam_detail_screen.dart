@@ -10,6 +10,85 @@ import 'package:uniexam/providers/exam_provider.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
+Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Exam exam) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Delete this exam?'),
+      content: Text(
+        '"${exam.title}" and its questions will be removed from this exam. Questions '
+        'stay in your bank.\n\n'
+        'If any student has already sat it, this will be '
+        'refused — their answers and results cannot be deleted this way.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Keep'),
+        ),
+        FilledButton(
+          key: const Key('confirm_delete_exam'),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (!(confirmed ?? false) || !context.mounted) return;
+
+  try {
+    await ref.read(examRepositoryProvider).delete(exam.id);
+    ref.invalidate(courseExamsProvider(exam.courseId));
+    // maybePop rather than pop: this screen is not always the top of a stack, and
+    // popping nothing should be a no-op rather than an error.
+    if (context.mounted) await Navigator.of(context).maybePop();
+  } on ApiException catch (error) {
+    if (!context.mounted) return;
+    // The server refuses once anyone has sat it, and says so in terms a teacher can
+    // act on. Surfacing that verbatim beats paraphrasing it here.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.message), duration: const Duration(seconds: 6)),
+    );
+  }
+}
+
+Future<void> _confirmCancel(BuildContext context, WidgetRef ref, Exam exam) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Cancel this exam?'),
+      content: const Text(
+        'Nothing is lost. Attempts, answers and results all stay exactly where they '
+        'are, and remain readable.\n\n'
+        'What changes is that no new student can start '
+        'it, and it stops appearing for students who have not sat it.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Keep it open'),
+        ),
+        FilledButton(
+          key: const Key('confirm_cancel_exam'),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Cancel exam'),
+        ),
+      ],
+    ),
+  );
+  if (!(confirmed ?? false) || !context.mounted) return;
+
+  try {
+    await ref.read(examRepositoryProvider).cancel(exam.id);
+    refreshExam(ref, exam.id, courseId: exam.courseId);
+  } on ApiException catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+}
+
 /// One exam: its schedule, settings, questions, and the Publish action.
 class ExamDetailScreen extends ConsumerWidget {
   const ExamDetailScreen({super.key, required this.examId});
@@ -48,6 +127,23 @@ class ExamDetailScreen extends ConsumerWidget {
               tooltip: 'Join requests',
               onPressed: () => context.push(Routes.teacherExamRequests(examId)),
               icon: const Icon(Icons.how_to_reg_outlined),
+            ),
+          if (exam.valueOrNull != null)
+            PopupMenuButton<String>(
+              key: const Key('exam_menu'),
+              onSelected: (value) => value == 'delete'
+                  ? _confirmDelete(context, ref, exam.value!)
+                  : _confirmCancel(context, ref, exam.value!),
+              itemBuilder: (_) => [
+                // Both are offered. Which one is right depends on whether anyone has
+                // sat it, and only the server knows that for certain — so delete is
+                // attempted and its refusal explains itself rather than being guessed
+                // at here from a stale copy of the exam.
+                const PopupMenuItem(value: 'delete', child: Text('Delete exam')),
+                if (!(exam.value!.isDraft) &&
+                    exam.value!.status != ExamStatus.cancelled)
+                  const PopupMenuItem(value: 'cancel', child: Text('Cancel exam')),
+              ],
             ),
         ],
       ),

@@ -157,7 +157,11 @@ def test_a_published_exam_is_frozen_against_every_edit(
     assert client.delete(
         f"{api}/exams/{exam.id}/questions/{link_id}", headers=headers
     ).status_code == 409
-    assert client.delete(f"{api}/exams/{exam.id}", headers=headers).status_code == 409
+
+    # Removing the exam entirely is not an edit to a frozen paper, and is governed by
+    # whether anyone has sat it rather than by status -- see test_exams.py. Publishing
+    # freezes the questions; it does not commit a teacher to keeping a mistake forever.
+    assert client.delete(f"{api}/exams/{exam.id}", headers=headers).status_code == 204
 
 
 def test_publishing_twice_is_refused(

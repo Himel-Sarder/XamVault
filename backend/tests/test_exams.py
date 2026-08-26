@@ -215,3 +215,97 @@ def test_an_admin_sees_every_exam_not_just_their_own(
 
     body = client.get(f"{api}/exams", headers=auth_headers(admin)).json()
     assert body["total"] == 2
+
+
+# ------------------------------------------------ removing an exam, or stopping it
+
+
+def test_a_draft_nobody_has_seen_is_deletable(
+    client, api, auth_headers, teacher, make_exam, teacher_course
+):
+    exam = make_exam(teacher, teacher_course)
+    assert client.delete(f"{api}/exams/{exam.id}", headers=auth_headers(teacher)).status_code == 204
+    assert client.get(f"{api}/exams/{exam.id}", headers=auth_headers(teacher)).status_code == 404
+
+
+def test_a_published_exam_nobody_sat_is_deletable_too(
+    client, api, auth_headers, teacher, make_published_exam, teacher_course
+):
+    """The gate is attempts, not status.
+
+    A published exam nobody opened holds nothing worth keeping, and refusing to remove
+    it would leave a teacher unable to clear their own mistakes.
+    """
+    exam = make_published_exam(teacher, teacher_course)
+    assert client.delete(f"{api}/exams/{exam.id}", headers=auth_headers(teacher)).status_code == 204
+
+
+def test_an_exam_a_student_sat_cannot_be_deleted(
+    client, api, auth_headers, teacher, student, approved_exam
+):
+    started = client.post(f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student))
+    assert started.status_code == 200
+
+    response = client.delete(f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher))
+    # Deleting it would take the student's answers and result with it.
+    assert response.status_code == 409
+    assert response.json()["code"] == "exam_has_attempts"
+    assert "Cancel it instead" in response.json()["detail"]
+
+
+def test_cancelling_keeps_everything_and_stops_new_sittings(
+    client, api, auth_headers, teacher, student, other_student, approved_exam,
+    make_join_request, enroll, teacher_course,
+):
+    started = client.post(f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student))
+    assert started.status_code == 200
+
+    cancelled = client.post(
+        f"{api}/exams/{approved_exam.id}/cancel", headers=auth_headers(teacher)
+    )
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "cancelled"
+
+    # The attempt that already happened is untouched.
+    assert client.get(
+        f"{api}/attempts/{started.json()['id']}", headers=auth_headers(student)
+    ).status_code == 200
+
+    # And nobody else can start one. A cancelled exam stops being published, and
+    # publication is what makes it visible at all, so it is simply not found rather
+    # than found-and-refused — the same convention the rest of the API follows.
+    enroll(teacher_course, other_student)
+    make_join_request(approved_exam, other_student, status="approved")
+    blocked = client.post(
+        f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(other_student)
+    )
+    assert blocked.status_code == 404
+
+
+def test_a_draft_is_deleted_rather_than_cancelled(
+    client, api, auth_headers, teacher, make_exam, teacher_course
+):
+    exam = make_exam(teacher, teacher_course)
+    response = client.post(f"{api}/exams/{exam.id}/cancel", headers=auth_headers(teacher))
+    assert response.status_code == 409
+    assert response.json()["code"] == "exam_not_started"
+
+
+def test_cancelling_twice_is_refused(
+    client, api, auth_headers, teacher, make_published_exam, teacher_course
+):
+    exam = make_published_exam(teacher, teacher_course)
+    assert client.post(f"{api}/exams/{exam.id}/cancel", headers=auth_headers(teacher)).status_code == 200
+    second = client.post(f"{api}/exams/{exam.id}/cancel", headers=auth_headers(teacher))
+    assert second.status_code == 409
+    assert second.json()["code"] == "already_cancelled"
+
+
+def test_another_teacher_can_neither_delete_nor_cancel(
+    client, api, auth_headers, other_teacher, teacher, make_published_exam, teacher_course
+):
+    exam = make_published_exam(teacher, teacher_course)
+    assert client.delete(f"{api}/exams/{exam.id}", headers=auth_headers(other_teacher)).status_code == 404
+    assert client.post(
+        f"{api}/exams/{exam.id}/cancel", headers=auth_headers(other_teacher)
+    ).status_code == 404

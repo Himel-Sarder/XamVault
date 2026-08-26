@@ -80,6 +80,10 @@ class ApiClient {
     await _send(() => dio.delete<dynamic>(path));
   }
 
+  /// A DELETE that answers with a body — a bulk clear reports how much it removed,
+  /// which 204 has no way to say.
+  Future<T> deleteWithResult<T>(String path) => _send(() => dio.delete<T>(path));
+
   Future<T> _send<T>(Future<Response<T>> Function() request) async {
     try {
       final response = await request();

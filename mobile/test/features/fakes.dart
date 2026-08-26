@@ -504,8 +504,35 @@ class FakeExamRepository implements ExamRepository {
     return get(examId);
   }
 
+  final List<int> deletedExams = [];
+  final List<int> cancelledExams = [];
+
+  /// Fails only the delete, leaving reads working — which is the real shape of the
+  /// case worth testing: the exam loads fine and the server refuses to remove it.
+  ApiException? failDeleteWith;
+
   @override
-  Future<void> delete(int examId) async => _maybeFail();
+  Future<void> delete(int examId) async {
+    _maybeFail();
+    final refusal = failDeleteWith;
+    if (refusal != null) throw refusal;
+    deletedExams.add(examId);
+    exams.removeWhere((e) => e.id == examId);
+  }
+
+  @override
+  Future<Exam> cancel(int examId) async {
+    _maybeFail();
+    cancelledExams.add(examId);
+    final index = exams.indexWhere((e) => e.id == examId);
+    final updated = buildExam(
+      id: examId,
+      title: exams[index].title,
+      status: ExamStatus.cancelled,
+    );
+    exams[index] = updated;
+    return updated;
+  }
 
   @override
   Future<PublishCheck> publishCheck(int examId) async {
@@ -1482,5 +1509,22 @@ class FakeNotificationRepository implements NotificationRepository {
       );
     }
     return unread;
+  }
+
+  final List<int> deleted = [];
+  int clearReadCalls = 0;
+
+  @override
+  Future<void> delete(int id) async {
+    deleted.add(id);
+    notifications.removeWhere((n) => n.id == id);
+  }
+
+  @override
+  Future<int> clearRead() async {
+    clearReadCalls++;
+    final read = notifications.where((n) => n.isRead).length;
+    notifications.removeWhere((n) => n.isRead);
+    return read;
   }
 }

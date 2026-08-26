@@ -26,6 +26,7 @@ from app.models.enums import (
 from app.models.exam import Exam, ExamQuestion, ExamSettings
 from app.models.question import Question, QuestionOption
 from app.models.user import User
+from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.exam_repository import ExamRepository
 from app.repositories.question_repository import QuestionRepository
 from app.schemas.exam import ExamCreate, ExamSettingsUpdate, ExamUpdate
@@ -39,6 +40,7 @@ class ExamService:
         self.db = db
         self.exams = ExamRepository(db)
         self.questions = QuestionRepository(db)
+        self.attempts = AttemptRepository(db)
         self.courses = CourseService(db)
 
     # --------------------------------------------------------- authorization
@@ -144,13 +146,49 @@ class ExamService:
         return self.get_for_teacher(exam.id, actor)
 
     def delete(self, exam_id: int, actor: User) -> None:
+        """Removes an exam nobody has sat.
+
+        The gate is attempts, not status. A published exam that no student ever opened
+        holds nothing worth keeping, and refusing to remove it would leave a teacher's
+        list full of mistakes they cannot clear. One attempt is different: it is a
+        student's record, and deleting the exam would take their answers, marks and
+        result with it. That case is offered :meth:`cancel` instead, which stops the
+        exam without destroying what happened during it.
+        """
         exam = self._get_owned(exam_id, actor)
-        self._assert_editable(exam)
+        sat = self.attempts.count_for_exam(exam.id)
+        if sat:
+            raise ConflictError(
+                f"{sat} student{'s have' if sat != 1 else ' has'} already sat this exam, "
+                "so deleting it would delete their answers and results. Cancel it "
+                "instead — that stops it without losing the record.",
+                code="exam_has_attempts",
+            )
         # Cascades remove the settings and the question links. The questions themselves
         # survive in the teacher's library, where they can be reused or deleted
         # deliberately.
         self.exams.delete(exam)
         self.db.commit()
+
+    def cancel(self, exam_id: int, actor: User) -> Exam:
+        """Stops an exam without destroying anything it produced.
+
+        Nothing is removed: attempts, answers and released results all stay readable.
+        A cancelled exam simply is not ``published`` any more, and starting an attempt
+        already requires that, so no new sitting can begin.
+        """
+        exam = self._get_owned(exam_id, actor)
+        if exam.status == ExamStatus.CANCELLED.value:
+            raise ConflictError("This exam is already cancelled", code="already_cancelled")
+        if exam.status == ExamStatus.DRAFT.value:
+            raise ConflictError(
+                "A draft has not started, so there is nothing to cancel. Delete it "
+                "instead.",
+                code="exam_not_started",
+            )
+        exam.status = ExamStatus.CANCELLED.value
+        self.db.commit()
+        return self.get_for_teacher(exam.id, actor)
 
     # ------------------------------------------------------------- questions
 

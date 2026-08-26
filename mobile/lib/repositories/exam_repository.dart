@@ -80,7 +80,15 @@ class ExamRepository {
     return Exam.fromJson(data);
   }
 
+  /// Removes an exam nobody has sat. The server refuses with 409 once anyone has,
+  /// because deleting it would take their answers and results too.
   Future<void> delete(int examId) => _api.delete('/exams/$examId');
+
+  /// Stops an exam without destroying what it produced. For the case delete refuses.
+  Future<Exam> cancel(int examId) async {
+    final data = await _api.post<Map<String, dynamic>>('/exams/$examId/cancel');
+    return Exam.fromJson(data);
+  }
 
   // ------------------------------------------------------------ publish
 

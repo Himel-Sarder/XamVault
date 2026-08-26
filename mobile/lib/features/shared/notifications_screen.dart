@@ -5,6 +5,7 @@ import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
 import 'package:uniexam/config/semantic_colours.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/models/notification.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
@@ -55,6 +56,91 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
+  Future<void> _delete(AppNotification notification) async {
+    try {
+      await ref.read(notificationRepositoryProvider).delete(notification.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification removed.')),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) refreshNotifications(ref);
+    }
+  }
+
+  Future<void> _clearRead() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear read notifications?'),
+        // Said plainly, because "clear" could otherwise be read as "clear everything".
+        content: const Text(
+          'Anything you have not read yet is kept. This only removes the notification, '
+          'never the exam or result it was about.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    try {
+      final cleared = await ref.read(notificationRepositoryProvider).clearRead();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              cleared == 0
+                  ? 'Nothing to clear.'
+                  : 'Cleared $cleared notification${cleared == 1 ? '' : 's'}.',
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) refreshNotifications(ref);
+    }
+  }
+
+  /// Swipe to remove. No confirmation: a notification is a copy of news, so the worst
+  /// case is losing a pointer to something still sitting where it was.
+  Widget _dismissible(AppNotification notification) {
+    return Dismissible(
+      key: Key('dismiss_${notification.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: context.status.danger.container,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(Icons.delete_outline, color: context.status.danger.foreground),
+      ),
+      onDismissed: (_) => _delete(notification),
+      child: _tile(notification),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifications = ref.watch(notificationsProvider(_unreadOnly));
@@ -76,6 +162,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               onPressed: _markAllRead,
               child: const Text('Mark all read'),
             ),
+          IconButton(
+            key: const Key('clear_read'),
+            tooltip: 'Clear read',
+            onPressed: _clearRead,
+            icon: const Icon(Icons.delete_sweep_outlined),
+          ),
         ],
       ),
       body: notifications.when(
@@ -100,7 +192,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: items.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, index) => _tile(items[index]),
+              itemBuilder: (_, index) => _dismissible(items[index]),
             ),
           );
         },

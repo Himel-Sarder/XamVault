@@ -333,6 +333,34 @@ even when nothing was created: an all-duplicate list is a legitimate outcome, no
 error. At most 200 ids per request; repeats within one list are collapsed before any
 lookup, so a duplicate is not reported as "already enrolled".
 
+## 2c. Removing things
+
+`DELETE /notifications/{id}` and `DELETE /notifications/read` — your own inbox only.
+
+Safe outright, unlike most deletion in this API: a notification is a *copy* of news, not
+the news itself. Removing "your result is available" leaves the result exactly where it
+was. `DELETE /notifications/read` clears only what has been read, and returns
+`{"cleared": n}` — it must never be able to remove something the reader has not seen.
+
+`DELETE /exams/{id}` — refuses with `409 exam_has_attempts` once any student has sat it.
+
+The gate is **attempts, not status**. A published exam that nobody ever opened holds
+nothing worth keeping, and refusing to remove it would leave a teacher unable to clear
+their own mistakes. One attempt is different: it is a student's record, and deleting the
+exam would take their answers, marks and result with it. Publishing freezes the
+questions; it does not commit a teacher to keeping a mistake forever.
+
+`POST /exams/{id}/cancel` — for exactly that refused case.
+
+Nothing is removed. Attempts, answers and released results all stay readable. The exam
+simply stops being `published`, and starting an attempt already requires that, so no new
+sitting can begin. A cancelled exam also stops being visible to students who had not sat
+it, so *their* requests to start it return 404 rather than a refusal — the same
+"not visible means not found" convention the rest of the API follows.
+
+This is the same shape as departments and users, which are archived and deactivated
+rather than deleted: destroy what nothing depends on, and stop the rest.
+
 ## 3. Planned surface (later phases)
 
 ```
