@@ -146,22 +146,28 @@ class ExamService:
         return self.get_for_teacher(exam.id, actor)
 
     def delete(self, exam_id: int, actor: User) -> None:
-        """Removes an exam nobody has sat.
+        """Removes an exam, and everything a student did in it.
 
-        The gate is attempts, not status. A published exam that no student ever opened
-        holds nothing worth keeping, and refusing to remove it would leave a teacher's
-        list full of mistakes they cannot clear. One attempt is different: it is a
-        student's record, and deleting the exam would take their answers, marks and
-        result with it. That case is offered :meth:`cancel` instead, which stops the
-        exam without destroying what happened during it.
+        Two gates, and the second is the interesting one.
+
+        An exam nobody has sat goes straight away: it holds nothing worth keeping, and
+        refusing would leave a teacher's list full of mistakes they cannot clear.
+
+        An exam students *have* sat must be cancelled first. That is not bureaucracy --
+        cancelling is reversible in the sense that it destroys nothing, so it gives the
+        teacher a state where the exam is already stopped and they can see exactly what
+        they would be throwing away before they throw it away. Deleting straight from
+        published would make one tap the difference between a live exam and a cohort's
+        results being gone.
         """
         exam = self._get_owned(exam_id, actor)
         sat = self.attempts.count_for_exam(exam.id)
-        if sat:
+        if sat and exam.status != ExamStatus.CANCELLED.value:
             raise ConflictError(
                 f"{sat} student{'s have' if sat != 1 else ' has'} already sat this exam, "
                 "so deleting it would delete their answers and results. Cancel it "
-                "instead — that stops it without losing the record.",
+                "first — that stops it without losing anything, and you can delete it "
+                "afterwards if you still want to.",
                 code="exam_has_attempts",
             )
         # Cascades remove the settings and the question links. The questions themselves

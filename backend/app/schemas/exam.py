@@ -67,6 +67,10 @@ class TeacherExamResponse(ORMModel):
     created_at: datetime
     published_at: datetime | None
     question_count: int
+
+    #: How many students have sat it, in any state. Present so a teacher is told what
+    #: deleting would destroy *before* they confirm it, rather than after.
+    attempt_count: int = 0
     settings: ExamSettingsResponse | None = None
 
 

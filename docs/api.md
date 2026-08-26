@@ -342,13 +342,21 @@ the news itself. Removing "your result is available" leaves the result exactly w
 was. `DELETE /notifications/read` clears only what has been read, and returns
 `{"cleared": n}` — it must never be able to remove something the reader has not seen.
 
-`DELETE /exams/{id}` — refuses with `409 exam_has_attempts` once any student has sat it.
+`DELETE /exams/{id}` — two gates.
 
-The gate is **attempts, not status**. A published exam that nobody ever opened holds
-nothing worth keeping, and refusing to remove it would leave a teacher unable to clear
-their own mistakes. One attempt is different: it is a student's record, and deleting the
-exam would take their answers, marks and result with it. Publishing freezes the
-questions; it does not commit a teacher to keeping a mistake forever.
+An exam **nobody has sat** goes straight away, draft or published. It holds nothing
+worth keeping, and refusing would leave a teacher unable to clear their own mistakes.
+Publishing freezes the questions; it does not commit anyone to keeping a mistake.
+
+An exam students **have** sat must be cancelled first, otherwise `409
+exam_has_attempts`. That is not bureaucracy: cancelling destroys nothing, so it leaves
+the teacher in a state where the exam is already stopped and they can see exactly what
+they would be throwing away before they throw it away. Deleting straight from published
+would make one tap the difference between a live exam and a cohort's results being gone.
+
+Once cancelled, deleting removes the attempts, answers and results too. The single-exam
+read carries `attempt_count` so the confirmation can name that number *before* the act
+rather than explaining it after.
 
 `POST /exams/{id}/cancel` — for exactly that refused case.
 

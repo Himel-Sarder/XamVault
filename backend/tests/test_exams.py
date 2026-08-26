@@ -247,10 +247,11 @@ def test_an_exam_a_student_sat_cannot_be_deleted(
     assert started.status_code == 200
 
     response = client.delete(f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher))
-    # Deleting it would take the student's answers and result with it.
+    # One tap must not be the difference between a live exam and a cohort's results
+    # being gone. Cancelling first is what unlocks it.
     assert response.status_code == 409
     assert response.json()["code"] == "exam_has_attempts"
-    assert "Cancel it instead" in response.json()["detail"]
+    assert "Cancel it first" in response.json()["detail"]
 
 
 def test_cancelling_keeps_everything_and_stops_new_sittings(
@@ -309,3 +310,60 @@ def test_another_teacher_can_neither_delete_nor_cancel(
     assert client.post(
         f"{api}/exams/{exam.id}/cancel", headers=auth_headers(other_teacher)
     ).status_code == 404
+
+
+def test_a_cancelled_exam_can_then_be_deleted(
+    client, api, auth_headers, teacher, student, approved_exam
+):
+    """Cancel first, delete after: two deliberate steps rather than one.
+
+    Cancelling destroys nothing, so it gives the teacher a state where the exam is
+    already stopped and they can see exactly what they would be throwing away before
+    they throw it away.
+    """
+    started = client.post(f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student))
+    assert started.status_code == 200
+
+    assert client.delete(
+        f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher)
+    ).status_code == 409
+
+    assert client.post(
+        f"{api}/exams/{approved_exam.id}/cancel", headers=auth_headers(teacher)
+    ).status_code == 200
+    assert client.delete(
+        f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher)
+    ).status_code == 204
+
+    assert client.get(
+        f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher)
+    ).status_code == 404
+
+
+def test_the_teacher_is_told_what_deleting_would_destroy(
+    client, api, auth_headers, teacher, student, approved_exam
+):
+    """The count is on the exam itself, so the warning can be written before the act
+    rather than explained after it."""
+    assert client.post(
+        f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student)
+    ).status_code == 200
+
+    exam = client.get(
+        f"{api}/exams/{approved_exam.id}", headers=auth_headers(teacher)
+    ).json()
+    assert exam["attempt_count"] == 1
+
+    cancelled = client.post(
+        f"{api}/exams/{approved_exam.id}/cancel", headers=auth_headers(teacher)
+    ).json()
+    # Still 1 after cancelling: nothing was destroyed by stopping it.
+    assert cancelled["attempt_count"] == 1
+
+
+def test_an_exam_nobody_sat_reports_no_attempts(
+    client, api, auth_headers, teacher, teacher_course, make_published_exam
+):
+    exam = make_published_exam(teacher, teacher_course)
+    body = client.get(f"{api}/exams/{exam.id}", headers=auth_headers(teacher)).json()
+    assert body["attempt_count"] == 0

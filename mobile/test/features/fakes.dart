@@ -358,6 +358,7 @@ class FakeAdminRepository implements AdminRepository {
 // ------------------------------------------------------------------ exams
 
 Exam buildExam({
+  int attemptCount = 0,
   int id = 10,
   int courseId = 1,
   String title = 'Mid Term Quiz',
@@ -377,6 +378,7 @@ Exam buildExam({
     totalMarks: totalMarks,
     status: status,
     questionCount: questionCount,
+    attemptCount: attemptCount,
     startAt: startAt ?? DateTime.now().add(const Duration(days: 1)),
     settings: settings,
   );

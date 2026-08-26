@@ -165,6 +165,46 @@ void main() {
       expect(find.textContaining('remain readable'), findsOneWidget);
     });
 
+    testWidgets('deleting an exam students sat names exactly what is lost',
+        (tester) async {
+      tall(tester);
+      final exams = FakeExamRepository(
+        exams: [
+          buildExam(id: 10, status: ExamStatus.cancelled, attemptCount: 3),
+        ],
+      );
+      await tester.pumpWidget(wrapExam(exams));
+      await tester.pumpAndSettle();
+      await openMenu(tester, 'Delete exam');
+
+      // This is the one action in the app that destroys work somebody else did.
+      expect(find.text('Delete this exam and its results?'), findsOneWidget);
+      expect(find.textContaining('3 students sat'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsOneWidget);
+      expect(find.text('Delete everything'), findsOneWidget);
+    });
+
+    testWidgets('deleting an exam nobody sat stays a quiet action', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrapExam(draft()));
+      await tester.pumpAndSettle();
+      await openMenu(tester, 'Delete exam');
+
+      // Nothing of anyone else's is at stake, so it does not shout.
+      expect(find.text('Delete this exam?'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsNothing);
+    });
+
+    testWidgets('cancelling says it makes deletion possible', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrapExam(published()));
+      await tester.pumpAndSettle();
+      await openMenu(tester, 'Cancel exam');
+
+      expect(find.textContaining('delete it afterwards'), findsOneWidget);
+    });
+
     testWidgets('a draft is not offered cancel', (tester) async {
       tall(tester);
       await tester.pumpWidget(wrapExam(draft()));

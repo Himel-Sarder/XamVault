@@ -42,10 +42,15 @@ from app.services.student_exam_service import StudentExamService
 router = APIRouter(prefix="/exams", tags=["exams"])
 
 
-def _exam_response(exam: Exam) -> TeacherExamResponse:
+def _exam_response(exam: Exam, *, attempts: int = 0) -> TeacherExamResponse:
     # question_count and is_frozen are properties on the models, so the schemas read them
     # like any other attribute instead of the router patching them in afterwards.
-    return TeacherExamResponse.model_validate(exam)
+    #
+    # attempt_count is not one of them: Exam has no attempts relationship, and adding
+    # one would load every row to count them. It is passed in where it is wanted --
+    # the single-exam read, which is the screen that offers deletion.
+    response = TeacherExamResponse.model_validate(exam)
+    return response.model_copy(update={"attempt_count": attempts})
 
 
 def _question_response(link: ExamQuestion) -> ExamQuestionResponse:
@@ -151,7 +156,9 @@ def read_exam(
 ) -> TeacherExamResponse | StudentExamResponse:
     if current_user.is_student:
         return StudentExamService(db).get(exam_id, current_user)
-    return _exam_response(ExamService(db).get_for_teacher(exam_id, current_user))
+    service = ExamService(db)
+    exam = service.get_for_teacher(exam_id, current_user)
+    return _exam_response(exam, attempts=service.attempts.count_for_exam(exam.id))
 
 
 @router.patch("/{exam_id}", response_model=TeacherExamResponse, summary="Edit a draft exam")
@@ -180,7 +187,9 @@ def update_settings(
 def cancel_exam(exam_id: int, current_user: TeacherUser, db: DbSession) -> object:
     """For an exam students have already sat, where deleting would take their records
     with it. Attempts, answers and results all stay; no new sitting can begin."""
-    return ExamService(db).cancel(exam_id, current_user)
+    service = ExamService(db)
+    exam = service.cancel(exam_id, current_user)
+    return _exam_response(exam, attempts=service.attempts.count_for_exam(exam.id))
 
 
 @router.delete(

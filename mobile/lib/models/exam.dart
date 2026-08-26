@@ -85,6 +85,7 @@ class Exam {
     required this.totalMarks,
     required this.status,
     required this.questionCount,
+    this.attemptCount = 0,
     this.description,
     this.startAt,
     this.expiresAt,
@@ -107,6 +108,10 @@ class Exam {
   final int totalMarks;
   final ExamStatus status;
   final int questionCount;
+
+  /// How many students have sat it. Present so a delete warning can name what would
+  /// be destroyed before the teacher confirms, rather than explaining it afterwards.
+  final int attemptCount;
   final DateTime? publishedAt;
   final ExamSettings? settings;
 
@@ -129,6 +134,7 @@ class Exam {
         totalMarks: json['total_marks'] as int,
         status: ExamStatus.fromJson(json['status'] as String),
         questionCount: json['question_count'] as int? ?? 0,
+        attemptCount: json['attempt_count'] as int? ?? 0,
         publishedAt: json['published_at'] == null
             ? null
             : DateTime.parse(json['published_at'] as String).toLocal(),

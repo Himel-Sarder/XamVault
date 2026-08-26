@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
+import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/teacher/widgets/exam_tile.dart';
 import 'package:uniexam/models/exam.dart';
@@ -11,15 +12,26 @@ import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Exam exam) async {
+  final sat = exam.attemptCount;
+  final destructive = sat > 0;
+
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Delete this exam?'),
+      title: Text(
+        destructive ? 'Delete this exam and its results?' : 'Delete this exam?',
+      ),
       content: Text(
-        '"${exam.title}" and its questions will be removed from this exam. Questions '
-        'stay in your bank.\n\n'
-        'If any student has already sat it, this will be '
-        'refused — their answers and results cannot be deleted this way.',
+        destructive
+            // Named, not implied. This is the one action in the app that destroys work
+            // somebody else did, so the count says so in as many words.
+            ? '$sat student${sat == 1 ? '' : 's'} sat "${exam.title}". Deleting it '
+                'removes their answers, their marks and their results as well. '
+                'This cannot be undone.\n\n'
+                'Questions stay in your bank.'
+            : '"${exam.title}" will be removed. Questions stay in your bank.\n\n'
+                'If a student has already sat it this will be refused — cancel it '
+                'first.',
       ),
       actions: [
         TextButton(
@@ -29,7 +41,13 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Exam exam) asyn
         FilledButton(
           key: const Key('confirm_delete_exam'),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Delete'),
+          style: destructive
+              ? FilledButton.styleFrom(
+                  backgroundColor: dialogContext.status.danger.foreground,
+                  foregroundColor: Colors.white,
+                )
+              : null,
+          child: Text(destructive ? 'Delete everything' : 'Delete'),
         ),
       ],
     ),
@@ -61,7 +79,8 @@ Future<void> _confirmCancel(BuildContext context, WidgetRef ref, Exam exam) asyn
         'Nothing is lost. Attempts, answers and results all stay exactly where they '
         'are, and remain readable.\n\n'
         'What changes is that no new student can start '
-        'it, and it stops appearing for students who have not sat it.',
+        'it, and it stops appearing for students who have not sat it. You can delete it '
+        'afterwards if you decide to.',
       ),
       actions: [
         TextButton(
