@@ -17,6 +17,11 @@ SecurityEventLiteral = Literal[
     "EXAM_RESTART",
     "LOCKDOWN_ENGAGED",
     "LOCKDOWN_UNAVAILABLE",
+    "DEVELOPER_MODE",
+    "USB_DEBUGGING",
+    "SPLIT_SCREEN",
+    "EXTERNAL_DISPLAY",
+    "OVERLAY_DETECTED",
 ]
 
 
@@ -59,3 +64,50 @@ class AttemptSecurityReport(BaseModel):
     warnings: int
     critical: int
     events: list[SecurityEventResponse]
+
+
+class StudentSecuritySummary(BaseModel):
+    """One student's activity during an exam, condensed to what a teacher scans for."""
+
+    attempt_id: int
+    student_id: int
+    student_name: str
+    student_number: str | None = None
+
+    #: How many times the app left the foreground. The number a teacher actually asks for.
+    exits: int
+    #: Seconds spent outside the app, summed over every return.
+    #:
+    #: Counted from the *return*, because that is the only moment the elapsed time is
+    #: known. An exit with no matching return therefore adds nothing here -- see
+    #: ``unreturned_exits``, which is what stops that silence being read as zero.
+    seconds_away: int
+    longest_away_seconds: int
+    #: Exits the app never came back from: the student submitted from elsewhere, the
+    #: attempt expired, or the device died mid-exam.
+    unreturned_exits: int
+
+    screenshot_attempts: int
+    screen_recordings: int
+    time_changes: int
+    restarts: int
+
+    total_events: int
+    warnings: int
+    critical: int
+
+    #: What lockdown the device actually granted, verbatim from the trail. An exam sat
+    #: without protection is a fact the invigilator needs before reading any of the rest.
+    lockdown: str | None = None
+
+
+class ExamSecuritySummary(BaseModel):
+    """Every student who sat one exam, most activity first.
+
+    Ordering is deliberate: a teacher opening this wants the outliers, not an
+    alphabetical list they have to read all of.
+    """
+
+    exam_id: int
+    exam_title: str
+    students: list[StudentSecuritySummary]

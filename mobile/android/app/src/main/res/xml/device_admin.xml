@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The narrowest useful policy set. Lock-task is what an exam actually needs; nothing here
+  asks to wipe the device, read storage or reset passwords, because an exam app has no
+  business holding those and a provisioned device should grant only what it must.
+-->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <disable-keyguard-features />
+    </uses-policies>
+</device-admin>

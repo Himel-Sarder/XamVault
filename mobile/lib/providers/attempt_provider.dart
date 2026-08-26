@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/attempt.dart';
+import 'package:uniexam/models/security_summary.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/providers/student_provider.dart';
 
@@ -364,4 +365,19 @@ final examAnalyticsProvider = FutureProvider.autoDispose
   return ref
       .watch(examRepositoryProvider)
       .analytics(args.examId, passPercentage: args.passPercentage);
+});
+
+/// What every student's device reported during one exam.
+///
+/// Named for activity rather than security to keep it distinct from
+/// [examSecurityProvider], which is the device lockdown channel.
+final examActivityProvider =
+    FutureProvider.autoDispose.family<ExamSecuritySummary, int>((ref, examId) async {
+  return ref.watch(examRepositoryProvider).securitySummary(examId);
+});
+
+/// The full trail behind one row.
+final attemptActivityProvider =
+    FutureProvider.autoDispose.family<AttemptSecurityReport, int>((ref, attemptId) async {
+  return ref.watch(examRepositoryProvider).attemptSecurity(attemptId);
 });

@@ -28,8 +28,20 @@ below fails for a reason that has nothing to do with lockdown.
 
 | Device | Expect |
 |---|---|
-| Ordinary personal phone | `FLAG_SECURE` enforced; Lock Task is *pinning*, which the student can dismiss |
-| Device Owner / managed | `FLAG_SECURE` enforced; Lock Task genuinely locked |
+| Ordinary personal phone | `FLAG_SECURE` enforced; Lock Task is *pinning*, which the student can dismiss, and which prompts before it starts |
+| Device Owner / provisioned | `FLAG_SECURE` enforced; Lock Task genuinely locked, with **no prompt** |
+
+**Provisioning a university device.** Silent pinning requires Device Owner, and Android
+only grants it on a freshly reset device with no accounts added:
+
+```
+adb shell dpm set-device-owner com.uniexam.uniexam/.ExamAdminReceiver
+```
+
+That difficulty is deliberate and there is no API that avoids it — an app able to seize
+a phone unannounced would be malware. On an unprovisioned personal phone the
+confirmation dialog cannot be suppressed by any means, and the app reports which of the
+two it actually got rather than implying the stronger one.
 
 Write down which one you tested. A result is meaningless without it.
 
@@ -92,9 +104,23 @@ check on the list: the app's honesty about its own limits is the feature.
 **Expect NOT:** the attempt being auto-submitted, or any accusation. §38 — the app
 records, a human decides.
 
+### 2.5b Conditions the device can see but not stop
+
+7. Before starting, turn on **Developer options** and **USB debugging**. Start an exam.
+8. Mid-exam, try **split screen** with another app.
+9. If you have a cable or dongle, attach an **external display**.
+
+**Expect:** the teacher's *Exam activity* screen records `Developer options are on`,
+`USB debugging is on`, `SPLIT_SCREEN` and `EXTERNAL_DISPLAY`. None of them ends the
+attempt or blocks anything — the app cannot prevent these and does not pretend to.
+
+Developer mode on a student's own phone is ordinary and means nothing by itself. It is
+recorded because it is context beside something else, and reading it that way is a
+human's job.
+
 ### 2.6 Pinning, and its honest limit
 
-7. If the banner said "Screenshots are blocked" (the unmanaged case), try to leave by
+10. If the banner said "Screenshots are blocked" (the unmanaged case), try to leave by
    holding **back + recents** together.
 
 **Expect:** you can leave. That is the documented limitation of pinning on an

@@ -180,3 +180,122 @@ def test_a_flood_of_events_is_capped(client, api, auth_headers, student, attempt
     overflow = _report(client, api, headers, attempt["id"], "APP_BACKGROUND")
     assert overflow.status_code == 409
     assert overflow.json()["code"] == "event_limit_reached"
+
+
+# ------------------------------------------------- the per-student exit record
+
+
+def _summary(client, api, headers, exam_id):
+    return client.get(f"{api}/exams/{exam_id}/security-summary", headers=headers)
+
+
+def test_the_teacher_sees_how_often_each_student_left(
+    client, api, auth_headers, teacher, student, approved_exam, attempt
+):
+    _report(
+        client, api, auth_headers(student), attempt["id"],
+        "APP_BACKGROUND",
+        {"event_type": "APP_FOREGROUND", "metadata": {"away_ms": 5000}},
+        "APP_BACKGROUND",
+        {"event_type": "APP_FOREGROUND", "metadata": {"away_ms": 20000}},
+    )
+
+    response = _summary(client, api, auth_headers(teacher), approved_exam.id)
+    assert response.status_code == 200, response.text
+    row = response.json()["students"][0]
+    assert row["student_name"] == student.name
+    assert row["exits"] == 2
+    assert row["seconds_away"] == 25
+    assert row["longest_away_seconds"] == 20
+    assert row["unreturned_exits"] == 0
+
+
+def test_an_exit_with_no_return_is_counted_rather_than_ignored(
+    client, api, auth_headers, teacher, student, approved_exam, attempt
+):
+    """A student who leaves and never comes back reports no duration.
+
+    Letting that read as zero seconds away would be the worst possible summary of the
+    most suspicious thing on the list.
+    """
+    _report(client, api, auth_headers(student), attempt["id"], "APP_BACKGROUND")
+
+    row = _summary(client, api, auth_headers(teacher), approved_exam.id).json()["students"][0]
+    assert row["exits"] == 1
+    assert row["unreturned_exits"] == 1
+    assert row["seconds_away"] == 0
+
+
+def test_nonsense_durations_from_a_patched_client_are_ignored(
+    client, api, auth_headers, teacher, student, approved_exam, attempt
+):
+    _report(
+        client, api, auth_headers(student), attempt["id"],
+        "APP_BACKGROUND",
+        {"event_type": "APP_FOREGROUND", "metadata": {"away_ms": -5000}},
+        "APP_BACKGROUND",
+        {"event_type": "APP_FOREGROUND", "metadata": {"away_ms": "lots"}},
+    )
+
+    row = _summary(client, api, auth_headers(teacher), approved_exam.id).json()["students"][0]
+    assert row["seconds_away"] == 0
+    assert row["exits"] == 2
+
+
+def test_the_summary_counts_what_the_lockdown_actually_gave(
+    client, api, auth_headers, teacher, student, approved_exam, attempt
+):
+    _report(
+        client, api, auth_headers(student), attempt["id"],
+        {"event_type": "LOCKDOWN_UNAVAILABLE", "metadata": {"detail": "Lock task unavailable"}},
+        "SCREENSHOT_ATTEMPT",
+    )
+
+    row = _summary(client, api, auth_headers(teacher), approved_exam.id).json()["students"][0]
+    # An exam sat with no device protection is context for everything else on the row.
+    assert row["lockdown"] == "Lock task unavailable"
+    assert row["screenshot_attempts"] == 1
+
+
+def test_the_busiest_student_is_listed_first(
+    client, api, auth_headers, teacher, student, other_student, approved_exam,
+    attempt, make_join_request, enroll, teacher_course,
+):
+    """A teacher opens this for the outliers, not for an alphabetical list."""
+    enroll(teacher_course, other_student)
+    make_join_request(approved_exam, other_student, status="approved")
+    started = client.post(
+        f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(other_student)
+    )
+    assert started.status_code == 200, started.text
+    quiet = started.json()
+
+    _report(client, api, auth_headers(other_student), quiet["id"], "APP_BACKGROUND")
+    _report(
+        client, api, auth_headers(student), attempt["id"],
+        "SCREENSHOT_ATTEMPT", "APP_BACKGROUND", "APP_BACKGROUND",
+    )
+
+    rows = _summary(client, api, auth_headers(teacher), approved_exam.id).json()["students"]
+    assert [r["student_name"] for r in rows][0] == student.name
+
+
+def test_a_student_cannot_read_the_summary(
+    client, api, auth_headers, student, approved_exam, attempt
+):
+    assert _summary(client, api, auth_headers(student), approved_exam.id).status_code == 403
+
+
+def test_another_teacher_cannot_read_the_summary(
+    client, api, auth_headers, other_teacher, approved_exam, attempt
+):
+    # 404, not 403: whether that exam exists is not their business either.
+    assert _summary(client, api, auth_headers(other_teacher), approved_exam.id).status_code == 404
+
+
+def test_an_exam_nobody_sat_summarises_to_nothing(
+    client, api, auth_headers, teacher, approved_exam
+):
+    response = _summary(client, api, auth_headers(teacher), approved_exam.id)
+    assert response.status_code == 200
+    assert response.json()["students"] == []

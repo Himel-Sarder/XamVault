@@ -5,6 +5,7 @@ import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/exam_result.dart';
 import 'package:uniexam/models/join_request.dart';
 import 'package:uniexam/models/paged.dart';
+import 'package:uniexam/models/security_summary.dart';
 import 'package:uniexam/models/question.dart';
 
 /// Teacher-side exam and question operations.
@@ -159,6 +160,21 @@ class ExamRepository {
       data: {'request_ids': ?requestIds},
     );
     return data['updated'] as int;
+  }
+
+  // ------------------------------------------------------------- activity
+
+  /// What every student's device reported during one exam.
+  Future<ExamSecuritySummary> securitySummary(int examId) async {
+    final data = await _api.get<Map<String, dynamic>>('/exams/$examId/security-summary');
+    return ExamSecuritySummary.fromJson(data);
+  }
+
+  /// The full trail for one attempt, when a row is worth opening.
+  Future<AttemptSecurityReport> attemptSecurity(int attemptId) async {
+    final data =
+        await _api.get<Map<String, dynamic>>('/attempts/$attemptId/security-events');
+    return AttemptSecurityReport.fromJson(data);
   }
 
   // ---------------------------------------------------------------- images

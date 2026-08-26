@@ -47,6 +47,7 @@ class Routes {
   static String teacherExamResults(int examId) => '/teacher/exams/$examId/results';
   static String teacherExamGrading(int examId) => '/teacher/exams/$examId/grading';
   static String teacherExamAnalytics(int examId) => '/teacher/exams/$examId/analytics';
+  static String teacherExamActivity(int examId) => '/teacher/exams/$examId/activity';
   static String teacherAttemptGrading(int examId, int attemptId) =>
       '/teacher/exams/$examId/grading/$attemptId';
 

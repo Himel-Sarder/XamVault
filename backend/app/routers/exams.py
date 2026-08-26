@@ -27,10 +27,12 @@ from app.schemas.question_bank import AttachFromBankRequest
 from app.schemas.analytics import ExamAnalytics
 from app.schemas.grading import GradingQueueEntry
 from app.schemas.result import PublishResultsResponse, TeacherResultResponse
+from app.schemas.security import ExamSecuritySummary
 from app.models.join_request import JoinRequest
 from app.services.analytics_service import AnalyticsService
 from app.services.attempt_service import AttemptService
 from app.services.exam_service import ExamService
+from app.services.security_service import SecurityService
 from app.services.grading_service import GradingService
 from app.services.question_bank_service import QuestionBankService
 from app.services.join_request_service import JoinRequestService
@@ -301,6 +303,20 @@ def list_join_requests(
         exam_id, current_user, status=request_status
     )
     return [_join_request_response(request) for request in requests]
+
+
+@router.get(
+    "/{exam_id}/security-summary",
+    response_model=ExamSecuritySummary,
+    summary="What every student's device reported during this exam (exam owner)",
+)
+def read_security_summary(exam_id: int, current_user: TeacherUser, db: DbSession):
+    """A record, not a verdict (§38).
+
+    Several of these have innocent explanations -- a call arrives, the network drops,
+    a parent walks in -- so the platform counts and presents, and a human decides.
+    """
+    return SecurityService(db).summary_for_exam(exam_id, current_user)
 
 
 @router.post(

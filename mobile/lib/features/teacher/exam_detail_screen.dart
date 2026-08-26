@@ -117,6 +117,17 @@ class _ExamBody extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    key: const Key('activity_row'),
+                    leading: const Icon(Icons.shield_outlined),
+                    title: const Text('Exam activity'),
+                    subtitle: const Text(
+                      "What each student's device reported while they sat it",
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(Routes.teacherExamActivity(exam.id)),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
                     key: const Key('analytics_row'),
                     leading: const Icon(Icons.insights_outlined),
                     title: const Text('Analytics'),

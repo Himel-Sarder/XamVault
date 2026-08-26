@@ -2,8 +2,13 @@ package com.uniexam.uniexam
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.os.Build
+import android.provider.Settings
+import android.view.Display
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -106,13 +111,39 @@ class ExamLockdown(private val activity: Activity) {
      * unmanaged-device case. The server records this so an invigilator knows which kind
      * of lockdown was actually in force.
      */
+    /**
+     * True when this app owns the device, which is the only state in which Android
+     * allows lock-task without a confirmation the student can dismiss.
+     */
+    fun isDeviceOwner(): Boolean = try {
+        val dpm = activity.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        dpm.isDeviceOwnerApp(activity.packageName)
+    } catch (error: Exception) {
+        false
+    }
+
+    /**
+     * Allow-lists this app for lock task, so `startLockTask` locks silently.
+     *
+     * Only a Device Owner may call this. Without ownership there is no API that
+     * suppresses the pinning confirmation -- that is the platform refusing to let any
+     * app seize a phone unannounced, and it is a protection rather than a gap.
+     */
+    private fun permitLockTask(): Boolean = try {
+        val dpm = activity.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(activity, ExamAdminReceiver::class.java)
+        dpm.setLockTaskPackages(admin, arrayOf(activity.packageName))
+        true
+    } catch (error: Exception) {
+        false
+    }
+
     private fun startLockTask(): Triple<Boolean, Boolean, String> = try {
         val manager = activity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val permitted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            manager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
-        } else {
-            false
-        }
+        val owned = isDeviceOwner()
+        // On a provisioned device this is what turns the dismissible pin into a lock.
+        val allowListed = if (owned) permitLockTask() else false
+
         activity.startLockTask()
         val state = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             manager.lockTaskModeState
@@ -124,11 +155,55 @@ class ExamLockdown(private val activity: Activity) {
                 Triple(true, false, "Locked by device policy")
             ActivityManager.LOCK_TASK_MODE_PINNED ->
                 Triple(true, true, "Screen pinned; the student can still exit")
-            else ->
-                Triple(false, false, if (permitted) "Lock task refused" else "Lock task unavailable")
+            else -> {
+                val why = when {
+                    owned && !allowListed -> "Device owner could not allow-list lock task"
+                    owned -> "Lock task refused by policy"
+                    else -> "Lock task unavailable: device is not provisioned"
+                }
+                Triple(false, false, why)
+            }
         }
     } catch (error: Exception) {
         Triple(false, false, "Lock task unavailable: ${error.javaClass.simpleName}")
+    }
+
+    /**
+     * Conditions the device can see but cannot prevent.
+     *
+     * Reported, never acted on. Developer mode on a student's own phone is ordinary and
+     * means nothing by itself; it matters only as context beside something else, which
+     * is exactly the judgement a human should be making rather than this class.
+     */
+    fun deviceConditions(): List<Pair<String, String>> {
+        val found = mutableListOf<Pair<String, String>>()
+
+        fun setting(key: String): Boolean = try {
+            Settings.Global.getInt(activity.contentResolver, key, 0) != 0
+        } catch (error: Exception) {
+            false
+        }
+
+        if (setting(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED)) {
+            found += "DEVELOPER_MODE" to "Developer options are on"
+        }
+        if (setting(Settings.Global.ADB_ENABLED)) {
+            found += "USB_DEBUGGING" to "USB debugging is on"
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInMultiWindowMode) {
+            found += "SPLIT_SCREEN" to "The app is sharing the screen with another app"
+        }
+        try {
+            val displays = (activity.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager)
+                .displays
+                .filter { it.displayId != Display.DEFAULT_DISPLAY }
+            if (displays.isNotEmpty()) {
+                found += "EXTERNAL_DISPLAY" to "A second display is attached"
+            }
+        } catch (error: Exception) {
+            // Nothing to report; the absence of a reading is not itself a finding.
+        }
+        return found
     }
 
     private fun stopLockTask() {

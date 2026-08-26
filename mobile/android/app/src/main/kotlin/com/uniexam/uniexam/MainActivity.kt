@@ -26,6 +26,9 @@ class MainActivity : FlutterActivity() {
     private var examRunning = false
     private var backgroundedAt: Long? = null
 
+    /** Reported once per exam: a hundred rows saying the same thing help nobody. */
+    private var overlayReported = false
+
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var timeChangeReceiver: android.content.BroadcastReceiver? = null
 
@@ -41,14 +44,21 @@ class MainActivity : FlutterActivity() {
                 "enterExamLockdown" -> {
                     examRunning = true
                     registerWatchers()
-                    result.success(lockdown.enter().toMap())
+                    val status = lockdown.enter()
+                    // Report the room as well as the lockdown: developer mode, USB
+                    // debugging, split screen and a second display are all things the
+                    // device can see and none it can stop.
+                    reportConditions()
+                    result.success(status.toMap())
                 }
                 "exitExamLockdown" -> {
                     examRunning = false
+                    overlayReported = false
                     unregisterWatchers()
                     result.success(lockdown.exit().toMap())
                 }
                 "isSupported" -> result.success(true)
+                "isDeviceOwner" -> result.success(lockdown.isDeviceOwner())
                 "isEngaged" -> result.success(lockdown.isEngaged())
                 else -> result.notImplemented()
             }
@@ -83,6 +93,42 @@ class MainActivity : FlutterActivity() {
             val away = backgroundedAt?.let { System.currentTimeMillis() - it }
             backgroundedAt = null
             report("APP_FOREGROUND", if (away != null) mapOf("away_ms" to away) else emptyMap())
+        }
+    }
+
+    /**
+     * Split screen can be entered *during* an exam, so it is checked again on every
+     * configuration change rather than only at the start.
+     */
+    @Suppress("DEPRECATION")
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode)
+        if (examRunning && isInMultiWindowMode) {
+            report("SPLIT_SCREEN", mapOf("detail" to "The app is sharing the screen with another app"))
+        }
+    }
+
+    /**
+     * A touch that arrived through something drawn on top of the exam.
+     *
+     * Android sets this flag when another window overlays ours, which is how an overlay
+     * app would sit over a paper. The touch is still delivered -- swallowing it would
+     * lose an answer over a condition we only suspect -- but the fact is recorded.
+     */
+    override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+        if (examRunning &&
+            (event.flags and android.view.MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 &&
+            !overlayReported
+        ) {
+            overlayReported = true
+            report("OVERLAY_DETECTED", mapOf("detail" to "Something was drawn over the exam"))
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    private fun reportConditions() {
+        for ((type, detail) in lockdown.deviceConditions()) {
+            report(type, mapOf("detail" to detail))
         }
     }
 

@@ -15,6 +15,7 @@ import 'package:uniexam/models/join_request.dart';
 import 'package:uniexam/models/notification.dart';
 import 'package:uniexam/models/paged.dart';
 import 'package:uniexam/models/question.dart';
+import 'package:uniexam/models/security_summary.dart';
 import 'package:uniexam/models/student_exam.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/admin_provider.dart';
@@ -733,6 +734,30 @@ class FakeExamRepository implements ExamRepository {
     joinRequests[index] = updated;
     return updated;
   }
+
+  ExamSecuritySummary? summary;
+  AttemptSecurityReport? attemptReport;
+
+  @override
+  Future<ExamSecuritySummary> securitySummary(int examId) async =>
+      summary ??
+      ExamSecuritySummary(
+        examId: examId,
+        examTitle: 'Mid Term Quiz',
+        students: const [],
+      );
+
+  @override
+  Future<AttemptSecurityReport> attemptSecurity(int attemptId) async =>
+      attemptReport ??
+      AttemptSecurityReport(
+        attemptId: attemptId,
+        studentName: 'Demo Student',
+        totalEvents: 0,
+        warnings: 0,
+        critical: 0,
+        events: const [],
+      );
 }
 
 // ------------------------------------------------------------- student side

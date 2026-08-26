@@ -71,6 +71,14 @@ class SecurityEventType(StrEnum):
     LOCKDOWN_ENGAGED = "LOCKDOWN_ENGAGED"
     LOCKDOWN_UNAVAILABLE = "LOCKDOWN_UNAVAILABLE"
 
+    # Conditions the device can see but not prevent. Each is reported once, when the
+    # exam starts or when it changes, so a trail says what the room was actually like.
+    DEVELOPER_MODE = "DEVELOPER_MODE"
+    USB_DEBUGGING = "USB_DEBUGGING"
+    SPLIT_SCREEN = "SPLIT_SCREEN"
+    EXTERNAL_DISPLAY = "EXTERNAL_DISPLAY"
+    OVERLAY_DETECTED = "OVERLAY_DETECTED"
+
 
 class SecuritySeverity(StrEnum):
     INFO = "info"
@@ -156,6 +164,14 @@ DEFAULT_EVENT_SEVERITY: dict[str, str] = {
     SecurityEventType.EXAM_RESTART.value: SecuritySeverity.WARNING.value,
     SecurityEventType.LOCKDOWN_ENGAGED.value: SecuritySeverity.INFO.value,
     SecurityEventType.LOCKDOWN_UNAVAILABLE.value: SecuritySeverity.WARNING.value,
+    # Developer mode and USB debugging are ordinary on a developer's own phone and
+    # meaningless on their own; they matter as context beside something else.
+    SecurityEventType.DEVELOPER_MODE.value: SecuritySeverity.INFO.value,
+    SecurityEventType.USB_DEBUGGING.value: SecuritySeverity.WARNING.value,
+    # These three put something else on screen beside the paper.
+    SecurityEventType.SPLIT_SCREEN.value: SecuritySeverity.CRITICAL.value,
+    SecurityEventType.EXTERNAL_DISPLAY.value: SecuritySeverity.CRITICAL.value,
+    SecurityEventType.OVERLAY_DETECTED.value: SecuritySeverity.CRITICAL.value,
 }
 
 # An attempt in progress. Anything else is finished and frozen.
