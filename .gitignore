@@ -56,3 +56,8 @@ Thumbs.db
 # JVM crash dumps, written when the Gradle daemon is killed.
 hs_err_pid*.log
 replay_pid*.log
+
+# Build and run logs. These are transcripts of one machine's build, not source.
+mobile/apk_build.log
+mobile/flutter_run.log
+mobile/.dart_tool/
