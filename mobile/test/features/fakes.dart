@@ -312,6 +312,25 @@ class FakeAdminRepository implements AdminRepository {
     );
   }
 
+  final List<int> deletedUsers = [];
+  Map<String, int> impact = const {
+    'courses': 0,
+    'exams': 0,
+    'questions': 0,
+    'attempts': 0,
+    'results': 0,
+    'enrolments': 0,
+  };
+
+  @override
+  Future<Map<String, int>> deletionImpact(int id) async => impact;
+
+  @override
+  Future<void> deleteUser(int id) async {
+    deletedUsers.add(id);
+    directory.removeWhere((u) => u.id == id);
+  }
+
   @override
   Future<User> user(int id) async => directory.firstWhere((u) => u.id == id);
 

@@ -8,9 +8,11 @@ used by the test suite does not accept pool sizing arguments at all.
 from __future__ import annotations
 
 from collections.abc import Iterator
+import sqlite3
 from typing import Any
 
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData, create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
@@ -54,6 +56,27 @@ engine = create_engine(
     future=True,
     **_engine_kwargs(settings.DATABASE_URL),
 )
+
+
+@event.listens_for(Engine, "connect")
+def _enforce_sqlite_foreign_keys(dbapi_connection, _record) -> None:
+    """SQLite ignores foreign keys unless asked not to.
+
+    Off by default, ON DELETE CASCADE and ON DELETE RESTRICT are both silently inert --
+    so a suite running on SQLite exercises none of the integrity the PostgreSQL
+    deployment actually enforces. Deleting a row would leave orphans locally and raise
+    in production, which is the worst way round for environments to differ.
+
+    Registered against the Engine class rather than one instance on purpose: the tests
+    build their own engine, and a listener attached only to this module's would have
+    left exactly the gap it is here to close.
+    """
+    if not isinstance(dbapi_connection, sqlite3.Connection):
+        return
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 
 SessionLocal = sessionmaker(
     bind=engine,

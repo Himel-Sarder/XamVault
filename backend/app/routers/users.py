@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.core.deps import AdminUser, CurrentUser, DbSession
 from app.schemas.common import Page, PageParams
@@ -49,6 +49,25 @@ def create_user(payload: UserCreate, _: AdminUser, db: DbSession) -> object:
 @router.get("/{user_id}", response_model=UserDetailResponse, summary="Read a user (admin)")
 def read_user(user_id: int, _: AdminUser, db: DbSession) -> object:
     return UserService(db).get_detail(user_id)
+
+
+@router.get(
+    "/{user_id}/deletion-impact",
+    summary="What deleting this account would destroy (admin)",
+)
+def read_deletion_impact(user_id: int, _: AdminUser, db: DbSession) -> dict[str, int]:
+    """Read before the confirmation, so the numbers can be shown rather than discovered."""
+    return UserService(db).deletion_impact(user_id)
+
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a deactivated account and everything it owns (admin)",
+)
+def delete_user(user_id: int, current_user: AdminUser, db: DbSession) -> Response:
+    UserService(db).delete_user(user_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{user_id}", response_model=UserDetailResponse, summary="Update a user (admin)")

@@ -78,4 +78,15 @@ class AdminRepository {
     });
     return User.fromJson(data);
   }
+
+  /// What deleting this account would destroy, read before the confirmation so the
+  /// numbers can be shown rather than discovered afterwards.
+  Future<Map<String, int>> deletionImpact(int id) async {
+    final data = await _api.get<Map<String, dynamic>>('/users/$id/deletion-impact');
+    return data.map((key, value) => MapEntry(key, (value as num).toInt()));
+  }
+
+  /// Removes a deactivated account and everything that cascades from it. Refused for
+  /// an active account, for your own, and for anyone who authored exams.
+  Future<void> deleteUser(int id) => _api.delete('/users/$id');
 }

@@ -369,6 +369,33 @@ it, so *their* requests to start it return 404 rather than a refusal — the sam
 This is the same shape as departments and users, which are archived and deactivated
 rather than deleted: destroy what nothing depends on, and stop the rest.
 
+## 2d. Deleting an account
+
+`GET /users/{id}/deletion-impact` then `DELETE /users/{id}` — admin only.
+
+Three refusals, each for its own reason.
+
+**Your own account** (`cannot_delete_self`). There may be no other administrator, and
+the account cannot restore itself. Checked before the deactivate-first rule, because
+deactivating yourself locks you out at the next request — so this is the only point at
+which the message still reaches the person who needs it.
+
+**An active account** (`deactivate_first`). Deactivating is the reversible version of
+the same intent, so doing it first means nobody destroys a live account in one step.
+Same shape as cancelling an exam before deleting it.
+
+**An author of courses, exams or questions** (`user_owns_content`). This one is not a
+policy choice: those columns are `ON DELETE RESTRICT`, because an exam other students
+sat must not lose its author. Checking in the service turns an integrity error into a
+sentence an administrator can act on.
+
+What does go: the person's own attempts, answers, results, enrolments, notifications,
+sessions and uploads, by database cascade. `deletion-impact` returns those counts so the
+confirmation names them before the act rather than after.
+
+> Note: SQLite ignores foreign keys unless told otherwise, so before the pragma was
+> added neither the cascade nor the RESTRICT was exercised by any test. Both are now.
+
 ## 3. Planned surface (later phases)
 
 ```

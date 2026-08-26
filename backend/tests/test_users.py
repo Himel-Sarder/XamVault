@@ -230,3 +230,104 @@ def test_a_student_cannot_create_accounts(client, api, auth_headers, student):
         },
     )
     assert response.status_code == 403
+
+
+# --------------------------------------------------------- deleting an account
+
+
+def _delete(client, api, auth_headers, actor, target_id):
+    return client.delete(f"{api}/users/{target_id}", headers=auth_headers(actor))
+
+
+def test_an_active_account_must_be_deactivated_first(
+    client, api, auth_headers, admin, student
+):
+    """Deactivating is the reversible version of the same intent.
+
+    Doing it first means nobody destroys a live account in one step -- the same shape
+    as cancelling an exam before deleting it.
+    """
+    response = _delete(client, api, auth_headers, admin, student.id)
+    assert response.status_code == 409
+    assert response.json()["code"] == "deactivate_first"
+
+
+def test_a_deactivated_account_is_deleted(client, api, auth_headers, admin, student):
+    client.patch(
+        f"{api}/users/{student.id}", headers=auth_headers(admin), json={"is_active": False}
+    )
+    assert _delete(client, api, auth_headers, admin, student.id).status_code == 204
+    assert client.get(
+        f"{api}/users/{student.id}", headers=auth_headers(admin)
+    ).status_code == 404
+
+
+def test_an_admin_cannot_delete_themselves(client, api, auth_headers, admin):
+    """There may be no other administrator, and the account cannot restore itself.
+
+    Checked before the deactivate-first rule, because deactivating yourself locks you
+    out at the next request -- so this is the only point at which the message can still
+    reach the person who needs it.
+    """
+    response = _delete(client, api, auth_headers, admin, admin.id)
+    assert response.status_code == 409
+    assert response.json()["code"] == "cannot_delete_self"
+
+
+def test_an_author_of_exams_is_not_deleted(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam
+):
+    """The database says RESTRICT because an exam other students sat must not lose its
+    author. Checking first turns an integrity error into a sentence."""
+    make_published_exam(teacher, teacher_course)
+    client.patch(
+        f"{api}/users/{teacher.id}", headers=auth_headers(admin), json={"is_active": False}
+    )
+
+    response = _delete(client, api, auth_headers, admin, teacher.id)
+    assert response.status_code == 409
+    assert response.json()["code"] == "user_owns_content"
+    assert "exams" in response.json()["detail"]
+
+
+def test_deleting_a_student_takes_their_attempts_with_them(
+    client, api, auth_headers, admin, teacher, student, approved_exam, db
+):
+    from app.models.attempt import ExamAttempt
+
+    started = client.post(f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student))
+    assert started.status_code == 200
+    assert db.query(ExamAttempt).count() == 1
+
+    client.patch(
+        f"{api}/users/{student.id}", headers=auth_headers(admin), json={"is_active": False}
+    )
+    assert _delete(client, api, auth_headers, admin, student.id).status_code == 204
+
+    # This is the point of the feature, and the admin was told the number first.
+    assert db.query(ExamAttempt).count() == 0
+
+
+def test_the_impact_is_readable_before_the_act(
+    client, api, auth_headers, admin, teacher, student, approved_exam
+):
+    client.post(f"{api}/exams/{approved_exam.id}/start", headers=auth_headers(student))
+
+    impact = client.get(
+        f"{api}/users/{student.id}/deletion-impact", headers=auth_headers(admin)
+    )
+    assert impact.status_code == 200
+    assert impact.json()["attempts"] == 1
+    assert impact.json()["exams"] == 0
+
+    owner = client.get(
+        f"{api}/users/{teacher.id}/deletion-impact", headers=auth_headers(admin)
+    ).json()
+    assert owner["exams"] >= 1
+
+
+def test_only_an_admin_may_delete_accounts(
+    client, api, auth_headers, teacher, student
+):
+    assert _delete(client, api, auth_headers, teacher, student.id).status_code == 403
+    assert _delete(client, api, auth_headers, student, student.id).status_code == 403

@@ -61,6 +61,86 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     }
   }
 
+  Future<void> _confirmDelete(User user) async {
+    final admin = ref.read(adminRepositoryProvider);
+
+    Map<String, int> impact;
+    try {
+      impact = await admin.deletionImpact(user.id);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final owns = ['courses', 'exams', 'questions']
+        .where((key) => (impact[key] ?? 0) > 0)
+        .map((key) => '${impact[key]} $key')
+        .toList();
+    final loses = ['attempts', 'results', 'enrolments']
+        .where((key) => (impact[key] ?? 0) > 0)
+        .map((key) => '${impact[key]} $key')
+        .toList();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('delete_user_dialog'),
+        title: Text(owns.isEmpty ? 'Delete this account?' : 'This account cannot be deleted'),
+        content: Text(
+          owns.isNotEmpty
+              // Blocked at the database, because an exam other students sat must not
+              // lose its author. Said here so it is read before the attempt, not after.
+              ? '${user.name} authored ${owns.join(', ')}. Exams and results belonging '
+                  'to other people depend on those, so the account cannot be removed. '
+                  'Reassign or delete that work first.'
+              : loses.isEmpty
+                  ? '${user.name} (${user.userId}) will be removed. They have no exam '
+                      'history, so nothing else goes with them.'
+                  : '${user.name} (${user.userId}) will be removed, and so will their '
+                      '${loses.join(', ')}. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(owns.isEmpty ? 'Keep' : 'Close'),
+          ),
+          if (owns.isEmpty)
+            FilledButton(
+              key: const Key('confirm_delete_user'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: loses.isEmpty
+                  ? null
+                  : FilledButton.styleFrom(
+                      backgroundColor: dialogContext.status.danger.foreground,
+                      foregroundColor: Colors.white,
+                    ),
+              child: Text(loses.isEmpty ? 'Delete' : 'Delete everything'),
+            ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    setState(() => _busyId = user.id);
+    try {
+      await admin.deleteUser(user.id);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyId = null);
+        ref.invalidate(adminUsersProvider);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final users = ref.watch(adminUsersProvider((role: _role, search: _query)));
@@ -199,10 +279,28 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                 width: 20,
                 child: CircularProgressIndicator(strokeWidth: 2.5),
               )
-            : Switch(
-                key: Key('user_active_${user.id}'),
-                value: user.isActive,
-                onChanged: (value) => _setActive(user, value),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    key: Key('user_active_${user.id}'),
+                    value: user.isActive,
+                    onChanged: (value) => _setActive(user, value),
+                  ),
+                  // Only once the account is switched off. Deactivating is the
+                  // reversible version of the same intent, so it comes first and this
+                  // never appears beside a live account.
+                  if (!user.isActive)
+                    IconButton(
+                      key: Key('delete_user_${user.id}'),
+                      tooltip: 'Delete account',
+                      onPressed: () => _confirmDelete(user),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: context.status.danger.foreground,
+                      ),
+                    ),
+                ],
               ),
       ),
     );
@@ -259,9 +357,12 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
             role: _role,
             email: email.isEmpty ? null : email,
             departmentId: _departmentId,
-            // A student's login *is* their student number, so it is not asked twice.
-            // The server defaults it the same way if omitted.
-            studentId: null,
+            // A student's login *is* their student number, so the form asks once and
+            // sends it for both. Sent explicitly rather than left for the server to
+            // default: the app already knows the value, and relying on the server to
+            // fill it in means the form breaks against any deployment that has not
+            // caught up yet -- which is exactly what happened.
+            studentId: _role == UserRole.student ? _userId.text.trim() : null,
             teacherId: _role == UserRole.teacher
                 ? (profileId.isEmpty ? null : profileId)
                 : null,

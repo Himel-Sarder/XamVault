@@ -441,14 +441,11 @@ void main() {
       expect(find.text('Bob Student'), findsNothing);
     });
 
-    testWidgets('an account is deactivated, never deleted', (tester) async {
+    testWidgets('deactivating comes first, and is one tap', (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory());
       await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
       await tester.pumpAndSettle();
-
-      // Exams, attempts and results all point at their author.
-      expect(find.byIcon(Icons.delete_outline), findsNothing);
 
       await tester.tap(find.byKey(const Key('user_active_1')));
       await tester.pumpAndSettle();
@@ -524,6 +521,84 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('new_user_profile_id')), findsOneWidget);
+    });
+
+    testWidgets('a live account offers no delete', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      // Deactivating is the reversible version of the same intent, so it comes first.
+      expect(find.byKey(const Key('delete_user_1')), findsNothing);
+      // Account 3 in the directory is deactivated.
+      expect(find.byKey(const Key('delete_user_3')), findsOneWidget);
+    });
+
+    testWidgets('deleting names what goes with the account', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory())
+        ..impact = const {
+          'courses': 0,
+          'exams': 0,
+          'questions': 0,
+          'attempts': 4,
+          'results': 2,
+          'enrolments': 1,
+        };
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_user_3')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('4 attempts'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsOneWidget);
+      expect(find.text('Delete everything'), findsOneWidget);
+    });
+
+    testWidgets('an account with no history deletes quietly', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_user_3')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('nothing else goes with them'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('confirm_delete_user')));
+      await tester.pumpAndSettle();
+      expect(admin.deletedUsers, [3]);
+    });
+
+    testWidgets('an author of exams is refused before the attempt', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory())
+        ..impact = const {
+          'courses': 2,
+          'exams': 5,
+          'questions': 0,
+          'attempts': 0,
+          'results': 0,
+          'enrolments': 0,
+        };
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_user_3')));
+      await tester.pumpAndSettle();
+
+      // Blocked at the database; said here so it is read before the attempt.
+      expect(find.text('This account cannot be deleted'), findsOneWidget);
+      expect(find.textContaining('5 exams'), findsOneWidget);
+      expect(find.byKey(const Key('confirm_delete_user')), findsNothing);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
+      expect(admin.deletedUsers, isEmpty);
     });
 
     testWidgets('an 8-digit student is created with the password the admin set',
