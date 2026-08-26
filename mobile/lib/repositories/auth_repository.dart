@@ -1,3 +1,4 @@
+import 'package:uniexam/config/app_config.dart';
 import 'package:uniexam/core/api_client.dart';
 import 'package:uniexam/models/auth_tokens.dart';
 import 'package:uniexam/models/user.dart';
@@ -25,6 +26,21 @@ class AuthRepository {
   /// local session is cleared either way.
   Future<void> logout(String refreshToken) =>
       _api.post<dynamic>('/auth/logout', data: {'refresh_token': refreshToken});
+
+  /// Nudges the server awake without caring whether it answers.
+  ///
+  /// A free host sleeps; this starts the wake while the user is still reading the
+  /// splash or typing a password, so the cold start overlaps with something they were
+  /// doing anyway. Failure is genuinely uninteresting — the real request will report
+  /// anything that matters.
+  Future<void> warmUp() async {
+    try {
+      // Absolute URL: /health sits at the server root, outside the /api/v1 prefix.
+      await _api.get<dynamic>(AppConfig.healthUrl);
+    } catch (_) {
+      // Deliberately swallowed: this is a nudge, not a check.
+    }
+  }
 
   Future<void> changePassword({
     required String currentPassword,

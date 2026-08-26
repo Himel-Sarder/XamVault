@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/config/app_config.dart';
@@ -17,8 +19,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  Timer? _hintTimer;
+  bool _showWakeHint = false;
+
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _userIdController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -27,11 +33,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusScope.of(context).unfocus();
+
+    // Only say the server is waking once the wait is long enough to need explaining.
+    // A sign-in against a warm server never shows this at all.
+    _hintTimer?.cancel();
+    setState(() => _showWakeHint = false);
+    _hintTimer = Timer(AppConfig.wakeHintAfter, () {
+      if (mounted) setState(() => _showWakeHint = true);
+    });
+
     // The router redirects on success; nothing to navigate to by hand.
     await ref.read(authProvider.notifier).login(
           userId: _userIdController.text.trim(),
           password: _passwordController.text,
         );
+
+    _hintTimer?.cancel();
+    if (mounted) setState(() => _showWakeHint = false);
   }
 
   @override
@@ -120,6 +138,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (auth.errorMessage != null) ...[
                       const SizedBox(height: 16),
                       _ErrorBanner(message: auth.errorMessage!),
+                    ],
+                    if (_showWakeHint && auth.isBusy) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            height: 14,
+                            width: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              AppConfig.wakeHint,
+                              key: const Key('wake_hint'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                     const SizedBox(height: 24),
                     SizedBox(

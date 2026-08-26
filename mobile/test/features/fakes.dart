@@ -86,6 +86,13 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<void> logout(String refreshToken) async => logoutCalls++;
 
+  int warmUpCalls = 0;
+
+  @override
+  Future<void> warmUp() async {
+    warmUpCalls++;
+  }
+
   /// Every change the screen actually sent, so a test can prove nothing went out
   /// when the form should have caught the problem itself.
   final List<(String, String)> passwordChanges = [];
