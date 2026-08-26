@@ -61,7 +61,10 @@ def test_creating_a_student_without_student_id_is_rejected(client, api, auth_hea
             "role": "student",
         },
     )
-    assert response.status_code == 422
+    # The student number and the login are the same 8 digits, so omitting one is not a
+    # mistake to reject -- it is the common case, and the server fills it in.
+    assert response.status_code == 201
+    assert response.json()["student_profile"]["student_id"] == "20260002"
 
 
 def test_duplicate_user_id_conflicts(client, api, auth_headers, admin, student):
@@ -135,3 +138,95 @@ def test_departments_are_readable_by_any_role_but_created_by_admin_only(
     )
     assert created.status_code == 201
     assert created.json()["code"] == "EEE"  # normalised to upper case
+
+
+# ------------------------------------------------- the 8-digit student login
+
+
+def _new_student(client, api, auth_headers, admin, **overrides):
+    payload = {
+        "user_id": "20260101",
+        "password": "InitialPassw0rd!",
+        "name": "Roll Student",
+        "role": "student",
+    }
+    payload.update(overrides)
+    return client.post(f"{api}/users", headers=auth_headers(admin), json=payload)
+
+
+def test_a_student_signs_in_with_the_id_the_admin_set(
+    client, api, auth_headers, admin
+):
+    """The whole point of the feature: admin sets the pair, the student uses it."""
+    assert _new_student(client, api, auth_headers, admin).status_code == 201
+
+    signed_in = client.post(
+        f"{api}/auth/login",
+        json={"user_id": "20260101", "password": "InitialPassw0rd!"},
+    )
+    assert signed_in.status_code == 200
+    assert signed_in.json()["user"]["role"] == "student"
+
+
+def test_a_student_id_must_be_eight_digits(client, api, auth_headers, admin):
+    for bad in ["abc", "2026", "202601010", "2026010a", ""]:
+        response = _new_student(client, api, auth_headers, admin, user_id=bad)
+        assert response.status_code == 422, f"{bad!r} should be refused"
+
+
+def test_the_student_number_defaults_to_the_login(client, api, auth_headers, admin):
+    body = _new_student(client, api, auth_headers, admin).json()
+    assert body["student_profile"]["student_id"] == "20260101"
+
+
+def test_a_different_student_number_is_still_allowed(client, api, auth_headers, admin):
+    """Defaulting is a convenience, not a rule: an institution may keep them apart."""
+    body = _new_student(
+        client, api, auth_headers, admin, student_id="REG-77"
+    ).json()
+    assert body["student_profile"]["student_id"] == "REG-77"
+
+
+def test_the_eight_digit_rule_is_for_students_only(client, api, auth_headers, admin):
+    response = client.post(
+        f"{api}/users",
+        headers=auth_headers(admin),
+        json={
+            "user_id": "T9001",
+            "password": "InitialPassw0rd!",
+            "name": "New Teacher",
+            "role": "teacher",
+        },
+    )
+    # Staff IDs are not student numbers and are not constrained to eight digits.
+    assert response.status_code == 201
+    assert response.json()["teacher_profile"]["teacher_id"] == "T9001"
+
+
+def test_the_admin_sets_the_password_and_it_works_immediately(
+    client, api, auth_headers, admin
+):
+    _new_student(client, api, auth_headers, admin, password="ChosenByAdmin1")
+
+    assert client.post(
+        f"{api}/auth/login",
+        json={"user_id": "20260101", "password": "ChosenByAdmin1"},
+    ).status_code == 200
+    assert client.post(
+        f"{api}/auth/login",
+        json={"user_id": "20260101", "password": "InitialPassw0rd!"},
+    ).status_code == 401
+
+
+def test_a_student_cannot_create_accounts(client, api, auth_headers, student):
+    response = client.post(
+        f"{api}/users",
+        headers=auth_headers(student),
+        json={
+            "user_id": "20260999",
+            "password": "InitialPassw0rd!",
+            "name": "Self Made",
+            "role": "student",
+        },
+    )
+    assert response.status_code == 403

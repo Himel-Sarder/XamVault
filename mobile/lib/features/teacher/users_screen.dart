@@ -259,8 +259,12 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
             role: _role,
             email: email.isEmpty ? null : email,
             departmentId: _departmentId,
-            studentId: _role == UserRole.student ? profileId : null,
-            teacherId: _role == UserRole.teacher ? profileId : null,
+            // A student's login *is* their student number, so it is not asked twice.
+            // The server defaults it the same way if omitted.
+            studentId: null,
+            teacherId: _role == UserRole.teacher
+                ? (profileId.isEmpty ? null : profileId)
+                : null,
           );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
@@ -272,7 +276,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final needsProfileId = _role != UserRole.admin;
+    final isStudent = _role == UserRole.student;
 
     return AlertDialog(
       title: const Text('New user'),
@@ -298,13 +302,25 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
                 TextFormField(
                   key: const Key('new_user_id'),
                   controller: _userId,
-                  decoration: const InputDecoration(
-                    labelText: 'Login ID',
-                    helperText: 'What they type to sign in',
+                  keyboardType:
+                      isStudent ? TextInputType.number : TextInputType.text,
+                  decoration: InputDecoration(
+                    labelText: isStudent ? 'Student ID' : 'Login ID',
+                    helperText: isStudent
+                        ? '8 digits — this is what they sign in with'
+                        : 'What they type to sign in',
                   ),
-                  validator: (value) => (value == null || value.trim().length < 3)
-                      ? 'At least 3 characters'
-                      : null,
+                  validator: (value) {
+                    final entered = value?.trim() ?? '';
+                    if (isStudent) {
+                      // Caught here as well as on the server: a mistyped roll number
+                      // otherwise becomes an account nobody can sign in to.
+                      return RegExp(r'^\d{8}$').hasMatch(entered)
+                          ? null
+                          : 'A student ID is exactly 8 digits';
+                    }
+                    return entered.length < 3 ? 'At least 3 characters' : null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -322,7 +338,8 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'Initial password',
-                    helperText: 'At least 8 characters. They can change it after signing in.',
+                    helperText:
+                        'At least 8 characters. Give it to them; they can change it after signing in.',
                   ),
                   validator: (value) =>
                       (value == null || value.length < 8) ? 'At least 8 characters' : null,
@@ -334,19 +351,15 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(labelText: 'Email (optional)'),
                 ),
-                if (needsProfileId) ...[
+                if (_role == UserRole.teacher) ...[
                   const SizedBox(height: 12),
                   TextFormField(
                     key: const Key('new_user_profile_id'),
                     controller: _roleId,
-                    decoration: InputDecoration(
-                      labelText:
-                          _role == UserRole.student ? 'Student ID' : 'Teacher ID',
-                      helperText: 'Required for this role',
+                    decoration: const InputDecoration(
+                      labelText: 'Staff ID (optional)',
+                      helperText: 'Defaults to the login ID',
                     ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? 'Required for this role'
-                        : null,
                   ),
                 ],
                 const SizedBox(height: 12),

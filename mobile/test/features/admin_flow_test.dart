@@ -455,38 +455,50 @@ void main() {
       expect(admin.updated.single.isActive, isFalse);
     });
 
-    testWidgets('a student needs a student ID before the form will send',
+    Future<void> openNewUser(WidgetTester tester, FakeAdminRepository admin) async {
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('new_user')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a student ID that is not 8 digits is refused before sending',
         (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory());
-      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
-      await tester.pumpAndSettle();
+      await openNewUser(tester, admin);
 
-      await tester.tap(find.byKey(const Key('new_user')));
-      await tester.pumpAndSettle();
+      for (final bad in ['abc', '2026', '202699999']) {
+        await tester.enterText(find.byKey(const Key('new_user_id')), bad);
+        await tester.enterText(find.byKey(const Key('new_user_name')), 'New Student');
+        await tester.enterText(
+          find.byKey(const Key('new_user_password')),
+          'password123',
+        );
+        await tester.tap(find.byKey(const Key('new_user_submit')));
+        await tester.pumpAndSettle();
 
-      await tester.enterText(find.byKey(const Key('new_user_id')), '20269999');
-      await tester.enterText(find.byKey(const Key('new_user_name')), 'New Student');
-      await tester.enterText(
-        find.byKey(const Key('new_user_password')),
-        'password123',
-      );
-      await tester.tap(find.byKey(const Key('new_user_submit')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Required for this role'), findsOneWidget);
+        expect(find.text('A student ID is exactly 8 digits'), findsOneWidget,
+            reason: '$bad should be refused');
+      }
+      // A mistyped roll number would otherwise become an account nobody can sign in to.
       expect(admin.created, isEmpty);
+    });
+
+    testWidgets('a student is not asked for the same number twice', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await openNewUser(tester, admin);
+
+      // The login *is* the student number, so there is one field, not two.
+      expect(find.byKey(const Key('new_user_profile_id')), findsNothing);
+      expect(find.text('Student ID'), findsOneWidget);
     });
 
     testWidgets('an admin account is not asked for a profile ID', (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory());
-      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('new_user')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('new_user_profile_id')), findsOneWidget);
+      await openNewUser(tester, admin);
 
       // 'Administrator' is also a role filter chip behind the dialog.
       await tester.tap(
@@ -499,24 +511,32 @@ void main() {
       expect(find.byKey(const Key('new_user_profile_id')), findsNothing);
     });
 
-    testWidgets('a complete student is created with its profile ID', (tester) async {
+    testWidgets('a teacher may still carry a separate staff ID', (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory());
-      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
-      await tester.pumpAndSettle();
+      await openNewUser(tester, admin);
 
-      await tester.tap(find.byKey(const Key('new_user')));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Teacher'),
+        ),
+      );
       await tester.pumpAndSettle();
+      expect(find.byKey(const Key('new_user_profile_id')), findsOneWidget);
+    });
+
+    testWidgets('an 8-digit student is created with the password the admin set',
+        (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await openNewUser(tester, admin);
 
       await tester.enterText(find.byKey(const Key('new_user_id')), '20269999');
       await tester.enterText(find.byKey(const Key('new_user_name')), 'New Student');
       await tester.enterText(
         find.byKey(const Key('new_user_password')),
         'password123',
-      );
-      await tester.enterText(
-        find.byKey(const Key('new_user_profile_id')),
-        '20269999',
       );
       await tester.tap(find.byKey(const Key('new_user_submit')));
       await tester.pumpAndSettle();

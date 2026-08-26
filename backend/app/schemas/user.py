@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Literal
 
@@ -13,6 +14,12 @@ RoleLiteral = Literal["admin", "teacher", "student"]
 
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
+
+#: A student signs in with their student number, which this university issues as
+#: eight digits. Enforced on creation so a typo becomes an error at the point it is
+#: made, rather than an account nobody can sign in to.
+STUDENT_ID_LENGTH = 8
+STUDENT_ID_PATTERN = re.compile(rf"\d{{{STUDENT_ID_LENGTH}}}")
 
 
 class UserSummary(ORMModel):
@@ -76,10 +83,19 @@ class UserCreate(BaseModel):
 
     @model_validator(mode="after")
     def _require_profile_fields_for_role(self) -> "UserCreate":
-        if self.role == UserRole.STUDENT and not self.student_id:
-            raise ValueError("student_id is required when role is 'student'")
+        if self.role == UserRole.STUDENT:
+            if not STUDENT_ID_PATTERN.fullmatch(self.user_id):
+                raise ValueError(
+                    "A student signs in with their 8-digit student ID, "
+                    f"so user_id must be exactly {STUDENT_ID_LENGTH} digits"
+                )
+            # The registration number and the login are the same number here, so an
+            # admin is not asked to type it twice. It stays settable for the case where
+            # an institution genuinely keeps them apart.
+            if not self.student_id:
+                self.student_id = self.user_id
         if self.role == UserRole.TEACHER and not self.teacher_id:
-            raise ValueError("teacher_id is required when role is 'teacher'")
+            self.teacher_id = self.user_id
         return self
 
 
