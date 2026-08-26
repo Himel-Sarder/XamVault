@@ -216,6 +216,7 @@ class _QuestionBuilderScreenState extends ConsumerState<QuestionBuilderScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
             DropdownButtonFormField<QuestionType>(
+              isExpanded: true,
               key: const Key('question_type'),
               initialValue: _type,
               decoration: const InputDecoration(

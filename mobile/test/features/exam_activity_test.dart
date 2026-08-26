@@ -73,7 +73,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Ayesha'), findsOneWidget);
-      expect(find.textContaining('3 exits'), findsOneWidget);
+      // The count and its unit are stacked in the badge, so they are separate widgets.
+      expect(find.text('3'), findsWidgets);
+      expect(find.text('exits'), findsOneWidget);
     });
 
     testWidgets('time away is readable, not a raw second count', (tester) async {
@@ -112,11 +114,11 @@ void main() {
       ])));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Longest away'), findsNothing);
+      expect(find.textContaining('Longest'), findsNothing);
       await tester.tap(find.byKey(const Key('activity_1')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Longest away 30s'), findsOneWidget);
+      expect(find.textContaining('Longest 30s'), findsOneWidget);
       expect(find.textContaining('1 screenshot'), findsOneWidget);
     });
   });
@@ -168,7 +170,7 @@ void main() {
       ])));
       await tester.pumpAndSettle();
 
-      expect(find.text('Unprotected'), findsOneWidget);
+      expect(find.text('Ran unprotected'), findsOneWidget);
       // One of the two, and it is context for every other number on the screen.
       expect(find.text('1'), findsWidgets);
     });

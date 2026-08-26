@@ -165,6 +165,8 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
               ),
               data: (items) => DropdownButtonFormField<int?>(
                 key: const Key('course_department'),
+                // Department names are long enough to overflow the field they sit in.
+                isExpanded: true,
                 initialValue: _departmentId,
                 decoration: const InputDecoration(
                   labelText: 'Department',
@@ -175,7 +177,10 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
                   for (final department in items)
                     DropdownMenuItem<int?>(
                       value: department.id,
-                      child: Text('${department.code} — ${department.name}'),
+                      child: Text(
+                        '${department.code} — ${department.name}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (value) => setState(() => _departmentId = value),

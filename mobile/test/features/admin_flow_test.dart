@@ -523,6 +523,29 @@ void main() {
       expect(find.byKey(const Key('new_user_profile_id')), findsOneWidget);
     });
 
+    testWidgets('the department picker actually lists the departments',
+        (tester) async {
+      useTallSurface(tester);
+      final departments = FakeDepartmentRepository();
+      final admin = FakeAdminRepository(users: directory());
+      await tester.pumpWidget(
+        wrap(const UsersScreen(), admin: admin, department: departments),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('new_user')));
+      await tester.pumpAndSettle();
+
+      // The dialog used to be handed a list read from a provider nobody had
+      // subscribed to, so it was empty every single time and no department could be
+      // chosen. Watching is what starts the fetch.
+      await tester.tap(find.byKey(const Key('new_user_department')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Computer Science'), findsWidgets);
+      expect(find.textContaining('Electrical'), findsWidgets);
+    });
+
     testWidgets('a live account offers no delete', (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory());

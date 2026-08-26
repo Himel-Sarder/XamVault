@@ -16,7 +16,12 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+# The build number must stay ahead of anything already installed, and split-per-abi
+# builds silently add an ABI offset to it -- +1000 for armeabi-v7a, +2000 for arm64-v8a.
+# So a universal APK built at +1 is a *downgrade* from an arm64 split at 2001, and
+# Android refuses it with nothing more helpful than "App not installed". Starting above
+# every offset any previous split could have produced keeps that from recurring.
+version: 1.0.0+3001
 
 environment:
   sdk: ^3.11.0

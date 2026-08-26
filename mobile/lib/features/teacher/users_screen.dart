@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
-import 'package:uniexam/models/department.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/admin_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
@@ -34,10 +33,9 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 
   Future<void> _create() async {
-    final departments = ref.read(departmentsProvider).valueOrNull ?? const <Department>[];
     final created = await showDialog<bool>(
       context: context,
-      builder: (_) => _NewUserDialog(departments: departments),
+      builder: (_) => const _NewUserDialog(),
     );
     if (created ?? false) {
       ref.invalidate(adminUsersProvider);
@@ -310,9 +308,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 /// Creating an account. The role decides which profile fields the API requires, so the
 /// form asks for exactly those and no more.
 class _NewUserDialog extends ConsumerStatefulWidget {
-  const _NewUserDialog({required this.departments});
-
-  final List<Department> departments;
+  const _NewUserDialog();
 
   @override
   ConsumerState<_NewUserDialog> createState() => _NewUserDialogState();
@@ -378,6 +374,11 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
   @override
   Widget build(BuildContext context) {
     final isStudent = _role == UserRole.student;
+    // Watched, not read: `ref.read` on a provider nobody has subscribed to returns
+    // AsyncLoading with no value, so the previous version handed this dialog an empty
+    // list every single time and the picker could never show anything. Watching starts
+    // the fetch and rebuilds when it lands.
+    final departments = ref.watch(departmentsProvider);
 
     return AlertDialog(
       title: const Text('New user'),
@@ -464,19 +465,45 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                DropdownButtonFormField<int?>(
-                  key: const Key('new_user_department'),
-                  initialValue: _departmentId,
-                  decoration: const InputDecoration(labelText: 'Department'),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('None')),
-                    for (final department in widget.departments)
-                      DropdownMenuItem<int?>(
-                        value: department.id,
-                        child: Text('${department.code} — ${department.name}'),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _departmentId = value),
+                departments.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  ),
+                  // The field is optional, so a list that will not load must not block
+                  // the form -- but say so rather than showing an empty picker, which
+                  // reads as "there are no departments".
+                  error: (_, _) => const ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.warning_amber_outlined),
+                    title: Text('Departments could not be loaded'),
+                    subtitle: Text('You can create the account and set it later.'),
+                  ),
+                  data: (items) => DropdownButtonFormField<int?>(
+                    key: const Key('new_user_department'),
+                    initialValue: _departmentId,
+                    // Without this the menu sizes to its widest item and overflows the
+                    // dialog: "CSE — Computer Science & Engineering" is longer than the
+                    // field it sits in.
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'Department',
+                      helperText: items.isEmpty ? 'No departments exist yet' : null,
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('None')),
+                      for (final department in items)
+                        DropdownMenuItem<int?>(
+                          value: department.id,
+                          child: Text(
+                            '${department.code} — ${department.name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _departmentId = value),
+                  ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
