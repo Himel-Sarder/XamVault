@@ -112,6 +112,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Lecturer'), findsOneWidget);
 
+    // The profile carries a header and two grouped sections now, so sign out sits
+    // below the fold on a small test surface.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profile_sign_out')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('profile_sign_out')));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
