@@ -2,6 +2,13 @@
 
     <!-- Release builds talk to the API over HTTPS only; cleartext stays off. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- PHOTO_ANSWER questions: the student photographs work done on paper. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- required="false" so the app still installs on a device without a camera. Only
+         photo questions need one, and refusing the whole install over them would be
+         out of proportion. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="UniExam"
         android:name="${applicationName}"

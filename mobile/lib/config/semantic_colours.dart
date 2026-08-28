@@ -37,6 +37,7 @@ extension QuestionTypeColour on QuestionType {
       QuestionType.imageImageOptions => accents[5],
       QuestionType.shortAnswer => accents[1],
       QuestionType.codeAnswer => accents[6],
+      QuestionType.photoAnswer => accents[7],
     };
   }
 
@@ -46,12 +47,16 @@ extension QuestionTypeColour on QuestionType {
         QuestionType.imageImageOptions => Icons.collections_outlined,
         QuestionType.shortAnswer => Icons.short_text,
         QuestionType.codeAnswer => Icons.code,
+        QuestionType.photoAnswer => Icons.photo_camera_outlined,
       };
 
   /// Whether a human has to mark it. Drives the amber "waiting on you" tint in the
   /// grading queue.
   bool get isManuallyMarked =>
-      this == QuestionType.shortAnswer || this == QuestionType.codeAnswer;
+      this == QuestionType.shortAnswer ||
+      this == QuestionType.codeAnswer ||
+      // Nothing can mark a photograph of handwriting but a person.
+      this == QuestionType.photoAnswer;
 }
 
 /// A score's colour, by whether it cleared the mark.

@@ -36,6 +36,10 @@ class AttemptQuestionResponse(BaseModel):
     answer_text: str | None = Field(
         default=None, description="Written answer, for short-answer and code questions."
     )
+    answer_image_urls: list[str] = Field(
+        default_factory=list,
+        description="Photographs of work on paper, for PHOTO_ANSWER questions.",
+    )
 
     # CODE_ANSWER only: shown beside the editor so the rules are visible.
     language: str | None = None
@@ -89,6 +93,7 @@ class AnswerAck(BaseModel):
     exam_question_id: int
     selected_option_id: int | None
     answer_text: str | None
+    answer_image_urls: list[str] = Field(default_factory=list)
     answered_count: int
     remaining_seconds: int
 

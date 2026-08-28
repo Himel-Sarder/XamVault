@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:uniexam/core/api_client.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/attempt.dart';
@@ -126,12 +127,59 @@ class StudentRepository {
     final data = await _api.get<Map<String, dynamic>>('/results/$resultId');
     return ExamResult.fromJson(data);
   }
+
+  /// Adds one photograph of work done on paper.
+  ///
+  /// The three-photograph cap is the server's, and this reports whatever it says the
+  /// answer now holds rather than assuming the upload landed.
+  Future<AnswerAck> addAnswerPhoto(
+    int attemptId, {
+    required int examQuestionId,
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    final data = await _api.post<Map<String, dynamic>>(
+      '/attempts/$attemptId/answers/$examQuestionId/photos',
+      data: form,
+    );
+    return AnswerAck.fromJson(data);
+  }
+
+  Future<AnswerAck> removeAnswerPhoto(
+    int attemptId, {
+    required int examQuestionId,
+    required String url,
+  }) async {
+    final data = await _api.deleteWithResult<Map<String, dynamic>>(
+      '/attempts/$attemptId/answers/$examQuestionId/photos?url=$url',
+    );
+    return AnswerAck.fromJson(data);
+  }
 }
 
 /// What the server confirms after saving one answer.
 class AnswerAck {
-  const AnswerAck({required this.answeredCount, required this.remainingSeconds});
+  const AnswerAck({
+    required this.answeredCount,
+    required this.remainingSeconds,
+    this.answerImageUrls = const [],
+  });
 
   final int answeredCount;
   final int remainingSeconds;
+
+  /// The photographs the answer now holds. The server's list rather than the client's
+  /// guess, so a rejected upload cannot leave the screen showing one that never stored.
+  final List<String> answerImageUrls;
+
+  factory AnswerAck.fromJson(Map<String, dynamic> json) => AnswerAck(
+        answeredCount: json['answered_count'] as int,
+        remainingSeconds: json['remaining_seconds'] as int,
+        answerImageUrls: (json['answer_image_urls'] as List<dynamic>? ?? const [])
+            .map((item) => item as String)
+            .toList(growable: false),
+      );
 }

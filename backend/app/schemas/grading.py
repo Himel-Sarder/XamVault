@@ -20,16 +20,20 @@ class GradingQueueEntry(BaseModel):
 
 
 class AnswerToMark(BaseModel):
-    """A written answer beside the question it answers."""
+    """One answer a person has to read, beside the question it answers."""
 
     answer_id: int | None
     exam_question_id: int
     position: int
-    type: Literal["SHORT_ANSWER", "CODE_ANSWER"]
+    type: Literal["SHORT_ANSWER", "CODE_ANSWER", "PHOTO_ANSWER"]
     question_text: str
     language: str | None
     max_marks: int
     answer_text: str | None
+
+    #: Photographs of work on paper, for PHOTO_ANSWER. The marker reads these instead
+    #: of answer_text, which is empty for that type.
+    answer_image_urls: list[str] = Field(default_factory=list)
     marks_awarded: float | None
     feedback: str | None
     status: Literal["pending", "evaluated"]

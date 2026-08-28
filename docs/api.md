@@ -423,6 +423,39 @@ Refused for a student or a deactivated account (`400 not_a_teacher`,
 Every course response now carries `teacher_name`, eager-loaded with the page, so a list
 of every course in the system can be read without resolving integers by hand.
 
+## 2f. PHOTO_ANSWER — photographing work done on paper
+
+A sixth question type, for anything a keyboard is the wrong tool for: a derivation, a
+circuit, a proof. Typing those tests transcription rather than the subject.
+
+The teacher writes the question and nothing else — no options, no image needed. The
+student answers on paper and photographs it, up to **three** photographs per question.
+
+```
+POST   /attempts/{id}/answers/{exam_question_id}/photos    multipart, one file
+DELETE /attempts/{id}/answers/{exam_question_id}/photos?url=...
+```
+
+Both return the same `AnswerAck` as a written answer, carrying `answer_image_urls` —
+the server's list, not the client's guess, so a refused upload cannot leave a
+photograph on screen that was never stored.
+
+**Uploading is answering**, so it is gated exactly as answering is: your own attempt,
+still open, still inside the time, and a question of the right type. This is why it is
+not the teacher-only `/questions/upload-image` endpoint.
+
+The three-photograph cap is enforced by the server. A cap that lives in the UI is a
+suggestion, and the count is taken *before* the file is stored, so a refusal does not
+orphan an image.
+
+Removal takes the URL rather than an index: a list position is ambiguous the moment two
+removals race, and the URL names exactly the photograph the student tapped. The stored
+bytes go with the reference.
+
+Marking is manual, like short answer and code — nothing can mark a photograph of
+handwriting but a person — so the answer arrives in the grading queue with the
+photographs attached and `status: pending`.
+
 ## 3. Planned surface (later phases)
 
 ```

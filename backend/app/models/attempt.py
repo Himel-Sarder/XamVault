@@ -130,6 +130,11 @@ class StudentAnswer(Base):
     selected_option_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    #: URLs of the photographs the student took of their work, in the order they took
+    #: them. A JSON list rather than a table: it is a short, ordered list owned entirely
+    #: by this row, never queried on its own, and a join would buy nothing.
+    answer_image_urls: Mapped[list[str] | None] = mapped_column(JSONColumn, nullable=True)
+
     marks_awarded: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     evaluated_by: Mapped[int | None] = mapped_column(
@@ -152,4 +157,10 @@ class StudentAnswer(Base):
 
     @property
     def is_answered(self) -> bool:
-        return self.selected_option_id is not None or bool(self.answer_text)
+        # A photographed answer counts. Without this the progress figure would tell a
+        # student who has photographed every page that they have answered nothing.
+        return (
+            self.selected_option_id is not None
+            or bool(self.answer_text)
+            or bool(self.answer_image_urls)
+        )

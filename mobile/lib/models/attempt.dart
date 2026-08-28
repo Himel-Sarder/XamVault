@@ -41,6 +41,7 @@ class AttemptQuestion {
     this.questionImageUrl,
     this.selectedOptionId,
     this.answerText,
+    this.answerImageUrls = const [],
     this.language,
     this.timeLimitSeconds,
     this.memoryLimitMb,
@@ -58,6 +59,9 @@ class AttemptQuestion {
   final int? selectedOptionId;
   final String? answerText;
 
+  /// Photographs of work on paper, for PHOTO_ANSWER questions.
+  final List<String> answerImageUrls;
+
   /// CODE_ANSWER only: shown beside the editor so the rules are visible.
   final String? language;
   final int? timeLimitSeconds;
@@ -65,16 +69,22 @@ class AttemptQuestion {
 
   bool get isChoice => options.isNotEmpty;
   bool get isCode => type == 'CODE_ANSWER';
+  bool get isPhoto => type == 'PHOTO_ANSWER';
   bool get hasImageStem => questionImageUrl != null && questionImageUrl!.isNotEmpty;
 
   bool get isAnswered =>
-      selectedOptionId != null || (answerText != null && answerText!.trim().isNotEmpty);
+      selectedOptionId != null ||
+      (answerText != null && answerText!.trim().isNotEmpty) ||
+      // A photographed answer counts, or the progress figure would tell a student who
+      // has photographed every page that they have answered nothing.
+      answerImageUrls.isNotEmpty;
 
   AttemptQuestion copyWith({
     int? selectedOptionId,
     bool clearSelection = false,
     String? answerText,
     bool clearText = false,
+    List<String>? answerImageUrls,
   }) {
     return AttemptQuestion(
       examQuestionId: examQuestionId,
@@ -86,6 +96,7 @@ class AttemptQuestion {
       questionImageUrl: questionImageUrl,
       selectedOptionId: clearSelection ? null : (selectedOptionId ?? this.selectedOptionId),
       answerText: clearText ? null : (answerText ?? this.answerText),
+      answerImageUrls: answerImageUrls ?? this.answerImageUrls,
       language: language,
       timeLimitSeconds: timeLimitSeconds,
       memoryLimitMb: memoryLimitMb,
@@ -101,6 +112,9 @@ class AttemptQuestion {
         questionImageUrl: json['question_image_url'] as String?,
         selectedOptionId: json['selected_option_id'] as int?,
         answerText: json['answer_text'] as String?,
+        answerImageUrls: (json['answer_image_urls'] as List<dynamic>? ?? const [])
+            .map((item) => item as String)
+            .toList(growable: false),
         language: json['language'] as String?,
         timeLimitSeconds: json['time_limit_seconds'] as int?,
         memoryLimitMb: json['memory_limit_mb'] as int?,

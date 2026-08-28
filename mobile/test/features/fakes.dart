@@ -1303,6 +1303,49 @@ class FakeStudentRepository implements StudentRepository {
     exportedResults.add(resultId);
     return (bytes: <int>[37, 80, 68, 70], filename: 'CSE-301-result.pdf');
   }
+
+  /// Photographs held per question, keyed by exam question id.
+  final Map<int, List<String>> photos = {};
+  int photoLimit = 3;
+
+  @override
+  Future<AnswerAck> addAnswerPhoto(
+    int attemptId, {
+    required int examQuestionId,
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    _maybeFail();
+    final held = photos.putIfAbsent(examQuestionId, () => []);
+    if (held.length >= photoLimit) {
+      throw const ApiException(
+        'A question takes at most 3 photographs. Remove one before adding another.',
+        statusCode: 409,
+        code: 'photo_limit_reached',
+      );
+    }
+    held.add('/uploads/photo${held.length + 1}.png');
+    return AnswerAck(
+      answeredCount: 1,
+      remainingSeconds: 600,
+      answerImageUrls: List.of(held),
+    );
+  }
+
+  @override
+  Future<AnswerAck> removeAnswerPhoto(
+    int attemptId, {
+    required int examQuestionId,
+    required String url,
+  }) async {
+    _maybeFail();
+    photos.putIfAbsent(examQuestionId, () => []).remove(url);
+    return AnswerAck(
+      answeredCount: 0,
+      remainingSeconds: 600,
+      answerImageUrls: List.of(photos[examQuestionId] ?? const []),
+    );
+  }
 }
 
 

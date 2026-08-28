@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/config/app_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/exam_result.dart';
@@ -176,18 +177,22 @@ class _AnswerMarkingCardState extends ConsumerState<AnswerMarkingCard> {
                 color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: answer.wasAnswered
-                  ? SelectableText(
-                      answer.answerText!,
-                      style: answer.isCode
-                          ? const TextStyle(fontFamily: 'monospace', fontSize: 13)
-                          : theme.textTheme.bodyMedium,
-                    )
-                  : Text(
+              child: !answer.wasAnswered
+                  ? Text(
                       'Not answered',
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
+                    )
+                  : answer.isPhoto
+                      // Tap to open full screen: a thumbnail cannot show whether the
+                      // handwriting is legible, which is the whole question here.
+                      ? _Photographs(urls: answer.answerImageUrls)
+                      : SelectableText(
+                          answer.answerText!,
+                          style: answer.isCode
+                              ? const TextStyle(fontFamily: 'monospace', fontSize: 13)
+                              : theme.textTheme.bodyMedium,
+                        ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -242,6 +247,87 @@ class _AnswerMarkingCardState extends ConsumerState<AnswerMarkingCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The photographs a student took of their work, for the marker to read.
+class _Photographs extends StatelessWidget {
+  const _Photographs({required this.urls});
+
+  final List<String> urls;
+
+  void _open(BuildContext context, int index) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              title: Text('Photo ${index + 1} of ${urls.length}'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                maxScale: 6,
+                child: Image.network(AppConfig.mediaUrl(urls[index])),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${urls.length} photo${urls.length == 1 ? '' : 's'} — tap to enlarge',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: urls.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) => GestureDetector(
+              key: Key('marker_photo_$index'),
+              onTap: () => _open(context, index),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  AppConfig.mediaUrl(urls[index]),
+                  width: 140,
+                  height: 160,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, _, _) => Container(
+                    width: 140,
+                    height: 160,
+                    alignment: Alignment.center,
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: const Text('Could not load'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

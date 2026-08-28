@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/models/security_summary.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/providers/student_provider.dart';
+import 'package:uniexam/repositories/student_repository.dart';
 
 /// Everything the exam screen renders.
 class AttemptView {
@@ -15,6 +17,7 @@ class AttemptView {
     required this.remainingSeconds,
     required this.index,
     this.savingQuestionId,
+    this.capturingQuestionId,
     this.submitting = false,
     this.outcome,
     this.error,
@@ -28,6 +31,9 @@ class AttemptView {
   final int remainingSeconds;
   final int index;
   final int? savingQuestionId;
+
+  /// The question whose photograph is being uploaded, if any.
+  final int? capturingQuestionId;
   final bool submitting;
   final SubmitOutcome? outcome;
   final String? error;
@@ -47,6 +53,8 @@ class AttemptView {
     int? index,
     int? savingQuestionId,
     bool clearSaving = false,
+    int? capturingQuestionId,
+    bool clearCapturing = false,
     bool? submitting,
     SubmitOutcome? outcome,
     String? error,
@@ -58,6 +66,8 @@ class AttemptView {
       remainingSeconds: remainingSeconds ?? this.remainingSeconds,
       index: index ?? this.index,
       savingQuestionId: clearSaving ? null : (savingQuestionId ?? this.savingQuestionId),
+      capturingQuestionId:
+          clearCapturing ? null : (capturingQuestionId ?? this.capturingQuestionId),
       submitting: submitting ?? this.submitting,
       outcome: outcome ?? this.outcome,
       error: clearError ? null : (error ?? this.error),
@@ -271,6 +281,107 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
       // The optimistic edit is rolled back by re-reading the server's own state.
       await _reload(error.message);
     }
+  }
+
+  /// The cap the button enforces. The server enforces its own, and that one is the
+  /// real limit — this exists so the button can explain itself before being tapped.
+  static const int maxAnswerPhotos = 3;
+
+  /// Opens the camera, uploads what was taken, and stores what the server confirms.
+  ///
+  /// [ImageSource.camera] rather than the gallery: the question asks the student to
+  /// photograph the page in front of them, and a gallery would let them attach
+  /// something prepared earlier. That is a default matching the intent, not a control.
+  Future<void> capturePhoto(int examQuestionId) async {
+    final view = state.valueOrNull;
+    if (view == null || view.isFinished || view.capturingQuestionId != null) return;
+
+    final XFile? shot;
+    try {
+      shot = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+        maxWidth: 2000,
+      );
+    } catch (_) {
+      // No camera, or permission refused. Said plainly rather than as a dead button.
+      state = AsyncData(view.copyWith(
+        error: 'Could not open the camera. Check the app has permission to use it.',
+      ));
+      return;
+    }
+    if (shot == null) return;
+
+    state = AsyncData(view.copyWith(
+      capturingQuestionId: examQuestionId,
+      clearError: true,
+    ));
+    try {
+      final bytes = await shot.readAsBytes();
+      final ack = await ref.read(studentRepositoryProvider).addAnswerPhoto(
+            arg,
+            examQuestionId: examQuestionId,
+            bytes: bytes,
+            filename: shot.name,
+          );
+      _applyPhotos(examQuestionId, ack);
+    } on ApiException catch (error) {
+      final current = state.valueOrNull;
+      if (current != null) {
+        state = AsyncData(current.copyWith(
+          error: error.message,
+          clearCapturing: true,
+        ));
+      }
+    }
+  }
+
+  Future<void> removePhoto(int examQuestionId, String url) async {
+    final view = state.valueOrNull;
+    if (view == null || view.isFinished) return;
+
+    state = AsyncData(view.copyWith(
+      capturingQuestionId: examQuestionId,
+      clearError: true,
+    ));
+    try {
+      final ack = await ref.read(studentRepositoryProvider).removeAnswerPhoto(
+            arg,
+            examQuestionId: examQuestionId,
+            url: url,
+          );
+      _applyPhotos(examQuestionId, ack);
+    } on ApiException catch (error) {
+      final current = state.valueOrNull;
+      if (current != null) {
+        state = AsyncData(current.copyWith(
+          error: error.message,
+          clearCapturing: true,
+        ));
+      }
+    }
+  }
+
+  /// Takes the server's list rather than the client's guess, so a refused upload
+  /// cannot leave a photograph on screen that was never stored.
+  void _applyPhotos(int examQuestionId, AnswerAck ack) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    final updated = current.attempt.questions
+        .map((item) => item.examQuestionId == examQuestionId
+            ? item.copyWith(answerImageUrls: ack.answerImageUrls)
+            : item)
+        .toList(growable: false);
+
+    state = AsyncData(current.copyWith(
+      attempt: current.attempt.copyWith(
+        questions: updated,
+        answeredCount: ack.answeredCount,
+      ),
+      remainingSeconds: ack.remainingSeconds,
+      clearCapturing: true,
+    ));
   }
 
   Future<void> submit({bool auto = false}) async {

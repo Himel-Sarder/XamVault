@@ -5,6 +5,7 @@ import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/features/student/widgets/exam_timer.dart';
+import 'package:uniexam/features/student/widgets/photo_answer_field.dart';
 import 'package:uniexam/features/student/widgets/question_body.dart';
 import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/providers/attempt_provider.dart';
@@ -203,6 +204,14 @@ class _ExamViewState extends ConsumerState<_ExamView> {
               selected: question.selectedOptionId == option.id,
               onTap: () => controller.select(question.examQuestionId, option.id),
             )
+        else if (question.isPhoto)
+          PhotoAnswerField(
+            urls: question.answerImageUrls,
+            maxPhotos: AttemptController.maxAnswerPhotos,
+            busy: view.capturingQuestionId == question.examQuestionId,
+            onCapture: () => controller.capturePhoto(question.examQuestionId),
+            onRemove: (url) => controller.removePhoto(question.examQuestionId, url),
+          )
         else if (question.isCode)
           CodeAnswerField(
             question: question,

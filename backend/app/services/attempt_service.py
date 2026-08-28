@@ -21,6 +21,8 @@ from typing import Any
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from fastapi import UploadFile
+
 from app.core.exceptions import (
     ConflictError,
     InvalidRequestError,
@@ -31,6 +33,8 @@ from app.models.attempt import ExamAttempt, StudentAnswer
 from app.models.enums import (
     CHOICE_QUESTION_TYPES,
     MANUAL_QUESTION_TYPES,
+    MAX_ANSWER_PHOTOS,
+    PHOTO_QUESTION_TYPES,
     AnswerStatus,
     AttemptStatus,
     ExamStatus,
@@ -43,6 +47,7 @@ from app.models.result import Result
 from app.models.user import User
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.course_repository import CourseRepository
+from app.services.upload_service import UploadService
 from app.repositories.exam_repository import ExamRepository
 from app.repositories.join_request_repository import JoinRequestRepository
 from app.services.notification_service import NotificationService
@@ -215,6 +220,9 @@ class AttemptService:
                     ],
                     "selected_option_id": answer.selected_option_id if answer else None,
                     "answer_text": answer.answer_text if answer else None,
+                    "answer_image_urls": list(answer.answer_image_urls or [])
+                    if answer
+                    else [],
                     # Shown next to the code editor so the student knows the rules.
                     "language": snapshot.get("language"),
                     "time_limit_seconds": snapshot.get("time_limit_seconds"),
@@ -281,6 +289,12 @@ class AttemptService:
                 allowed = attempt.option_orders.get(str(exam_question_id), [])
                 if selected_option_id not in allowed:
                     raise InvalidRequestError("That option does not belong to this question")
+        elif question_type in PHOTO_QUESTION_TYPES:
+            if selected_option_id is not None or answer_text:
+                raise InvalidRequestError(
+                    "This question is answered by photographing your work",
+                    code="photo_question",
+                )
         else:
             if selected_option_id is not None:
                 raise InvalidRequestError("This question is answered in writing")
@@ -303,6 +317,96 @@ class AttemptService:
             answer.updated_at = now
 
         self.db.commit()
+        self.db.refresh(attempt, ["answers"])
+        return attempt, answer
+
+    # ----------------------------------------------------------- photographs
+
+    def _open_photo_answer(
+        self, attempt_id: int, student: User, exam_question_id: int
+    ) -> tuple[ExamAttempt, StudentAnswer]:
+        """The checks every photograph operation shares.
+
+        Uploading is answering, so it is gated exactly as answering is: your own
+        attempt, still open, still inside the time, and a question of the right type.
+        """
+        attempt = self.get(attempt_id, student)
+        if not attempt.is_active:
+            raise ConflictError(
+                "This attempt has been submitted and can no longer be changed",
+                code="attempt_closed",
+            )
+        if exam_question_id not in attempt.question_order:
+            raise NotFoundError("That question is not part of this attempt")
+        if self._question_type(attempt, exam_question_id) not in PHOTO_QUESTION_TYPES:
+            raise InvalidRequestError(
+                "This question is not answered with photographs", code="not_a_photo_question"
+            )
+
+        answer = self.attempts.get_answer(attempt.id, exam_question_id)
+        if answer is None:
+            answer = self.attempts.add_answer(
+                StudentAnswer(
+                    attempt_id=attempt.id,
+                    exam_question_id=exam_question_id,
+                    status=AnswerStatus.PENDING.value,
+                    answer_image_urls=[],
+                )
+            )
+        return attempt, answer
+
+    async def add_photo(
+        self,
+        attempt_id: int,
+        student: User,
+        *,
+        exam_question_id: int,
+        upload: UploadFile,
+    ) -> tuple[ExamAttempt, StudentAnswer]:
+        """Stores one photograph against an answer.
+
+        The cap is enforced here rather than only on the button, because a cap that
+        lives in the UI is a suggestion. Counted before the file is stored, so a
+        rejected upload leaves nothing behind.
+        """
+        attempt, answer = self._open_photo_answer(attempt_id, student, exam_question_id)
+
+        existing = list(answer.answer_image_urls or [])
+        if len(existing) >= MAX_ANSWER_PHOTOS:
+            raise ConflictError(
+                f"A question takes at most {MAX_ANSWER_PHOTOS} photographs. "
+                "Remove one before adding another.",
+                code="photo_limit_reached",
+            )
+
+        stored = await UploadService(self.db).save_image(upload, student)
+        answer.answer_image_urls = existing + [stored.url]
+        answer.updated_at = datetime.now(UTC)
+        self.db.commit()
+        self.db.refresh(attempt, ["answers"])
+        return attempt, answer
+
+    def remove_photo(
+        self, attempt_id: int, student: User, *, exam_question_id: int, url: str
+    ) -> tuple[ExamAttempt, StudentAnswer]:
+        """Drops one photograph from an answer, and the stored bytes with it."""
+        attempt, answer = self._open_photo_answer(attempt_id, student, exam_question_id)
+
+        existing = list(answer.answer_image_urls or [])
+        if url not in existing:
+            raise NotFoundError("That photograph is not part of this answer")
+
+        answer.answer_image_urls = [item for item in existing if item != url]
+        answer.updated_at = datetime.now(UTC)
+        self.db.commit()
+
+        # The reference is gone either way; the bytes are a tidy-up. A failure here
+        # must not undo the removal the student asked for.
+        try:
+            UploadService(self.db).delete(url.rsplit("/", 1)[-1], student)
+        except (NotFoundError, ConflictError, PermissionDeniedError):
+            pass
+
         self.db.refresh(attempt, ["answers"])
         return attempt, answer
 

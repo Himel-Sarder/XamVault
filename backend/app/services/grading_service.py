@@ -94,6 +94,9 @@ class GradingService:
                     "language": snapshot.get("language"),
                     "max_marks": link.marks_snapshot,
                     "answer_text": answer.answer_text if answer else None,
+                    "answer_image_urls": list(answer.answer_image_urls or [])
+                    if answer
+                    else [],
                     "marks_awarded": (
                         float(answer.marks_awarded)
                         if answer and answer.marks_awarded is not None

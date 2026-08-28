@@ -165,6 +165,7 @@ class AnswerToMark {
     required this.status,
     this.language,
     this.answerText,
+    this.answerImageUrls = const [],
     this.marksAwarded,
     this.feedback,
   });
@@ -178,12 +179,19 @@ class AnswerToMark {
   final String status;
   final String? language;
   final String? answerText;
+
+  /// Photographs of work on paper, for PHOTO_ANSWER. The marker reads these
+  /// instead of answerText, which is empty for that type.
+  final List<String> answerImageUrls;
   final double? marksAwarded;
   final String? feedback;
 
   bool get isCode => type == 'CODE_ANSWER';
+  bool get isPhoto => type == 'PHOTO_ANSWER';
   bool get isMarked => status == 'evaluated';
-  bool get wasAnswered => answerText != null && answerText!.trim().isNotEmpty;
+  bool get wasAnswered =>
+      (answerText != null && answerText!.trim().isNotEmpty) ||
+      answerImageUrls.isNotEmpty;
 
   factory AnswerToMark.fromJson(Map<String, dynamic> json) => AnswerToMark(
         answerId: json['answer_id'] as int?,
@@ -195,6 +203,9 @@ class AnswerToMark {
         status: json['status'] as String,
         language: json['language'] as String?,
         answerText: json['answer_text'] as String?,
+        answerImageUrls: (json['answer_image_urls'] as List<dynamic>? ?? const [])
+            .map((item) => item as String)
+            .toList(growable: false),
         marksAwarded: (json['marks_awarded'] as num?)?.toDouble(),
         feedback: json['feedback'] as String?,
       );
