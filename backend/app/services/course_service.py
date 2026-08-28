@@ -6,6 +6,7 @@ never enough — the row's ``created_by`` must match the caller.
 
 from __future__ import annotations
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
@@ -15,6 +16,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
 )
 from app.models.course import Course, CourseEnrollment
+from app.models.exam import Exam
 from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories.course_repository import CourseRepository
@@ -108,6 +110,60 @@ class CourseService:
             setattr(course, field, value)
         self.db.commit()
         return course
+
+    def assign_teacher(
+        self, course_id: int, teacher_user_id: str, actor: User
+    ) -> tuple[Course, int]:
+        """Hands a course to a teacher. Administrators only.
+
+        Ownership of a course is what decides who may edit it, publish exams on it and
+        manage its roll, so this is the act of putting someone in charge of running it.
+
+        It deliberately does **not** move the exams already written on the course. An
+        exam carries its own author, its results point at that person, and rewriting
+        that because the course changed hands would misattribute somebody's work. The
+        count of what stayed behind is returned rather than left to be discovered by the
+        new teacher failing to open a paper they expected to inherit.
+        """
+        if not actor.is_admin:
+            raise PermissionDeniedError("Only an administrator can assign a course")
+
+        course = self.courses.get(course_id)
+        if course is None:
+            raise NotFoundError("Course not found")
+
+        teacher = self.users.get_by_login_id(teacher_user_id)
+        if teacher is None:
+            raise NotFoundError(f"No user with ID '{teacher_user_id}'")
+        if not (teacher.is_teacher or teacher.is_admin):
+            raise InvalidRequestError(
+                f"'{teacher.user_id}' is a {teacher.role}, and a course is run by a "
+                "teacher",
+                code="not_a_teacher",
+            )
+        if not teacher.is_active:
+            raise InvalidRequestError(
+                f"'{teacher.user_id}' is deactivated and cannot be given a course",
+                code="user_deactivated",
+            )
+        if course.created_by == teacher.id:
+            raise ConflictError(
+                f"'{teacher.user_id}' already runs this course", code="already_assigned"
+            )
+
+        previous_id = course.created_by
+        course.created_by = teacher.id
+        self.db.commit()
+
+        kept = int(
+            self.db.execute(
+                select(func.count())
+                .select_from(Exam)
+                .where(Exam.course_id == course.id, Exam.teacher_id == previous_id)
+            ).scalar_one()
+        )
+        self.db.refresh(course, ["creator"])
+        return course, kept
 
     # ------------------------------------------------------------ enrollments
 

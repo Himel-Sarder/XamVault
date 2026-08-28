@@ -271,6 +271,9 @@ class CourseTile extends StatelessWidget {
               subtitle: Text(
                 [
                   course.courseName,
+                  // Who runs it, where an admin is looking at every course in the
+                  // system and the name is the thing that tells them apart.
+                  if (course.teacherName != null) course.teacherName!,
                   if (course.session != null) course.session!,
                 ].join(' · '),
                 maxLines: 1,

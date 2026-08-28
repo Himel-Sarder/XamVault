@@ -4,10 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from app.core.deps import CurrentUser, DbSession, TeacherUser
+from app.core.deps import AdminUser, CurrentUser, DbSession, TeacherUser
 from app.schemas.common import Page, PageParams
 from app.schemas.course import (
     BulkEnrollmentCreate,
+    CourseAssign,
+    CourseAssignResponse,
     BulkEnrollmentResponse,
     CourseCreate,
     CourseResponse,
@@ -18,6 +20,15 @@ from app.schemas.course import (
 from app.services.course_service import CourseService
 
 router = APIRouter(prefix="/courses", tags=["courses"])
+
+
+def _course_response(course) -> CourseResponse:
+    """Adds the holder's name, which is not a column on the row."""
+    response = CourseResponse.model_validate(course)
+    creator = getattr(course, "creator", None)
+    return response.model_copy(
+        update={"teacher_name": creator.name if creator else None}
+    )
 
 
 @router.get("", response_model=Page[CourseResponse], summary="List courses visible to me")
@@ -33,7 +44,7 @@ def list_courses(
         current_user, offset=page.offset, limit=page.page_size, active_only=active_only
     )
     return Page[CourseResponse](
-        items=[CourseResponse.model_validate(course) for course in courses],
+        items=[_course_response(course) for course in courses],
         total=total,
         page=page.page,
         page_size=page.page_size,
@@ -47,19 +58,37 @@ def list_courses(
     summary="Create a course (teacher/admin)",
 )
 def create_course(payload: CourseCreate, current_user: TeacherUser, db: DbSession) -> object:
-    return CourseService(db).create(payload, current_user)
+    return _course_response(CourseService(db).create(payload, current_user))
+
+
+@router.post(
+    "/{course_id}/assign",
+    response_model=CourseAssignResponse,
+    summary="Put a teacher in charge of a course (admin)",
+)
+def assign_course(
+    course_id: int, payload: CourseAssign, current_user: AdminUser, db: DbSession
+) -> CourseAssignResponse:
+    """Ownership decides who may edit the course, publish exams on it and manage its
+    roll. Exams already written on it keep their own author -- see the count returned."""
+    course, kept = CourseService(db).assign_teacher(
+        course_id, payload.teacher_user_id, current_user
+    )
+    return CourseAssignResponse(
+        course=_course_response(course), exams_kept_by_previous_teacher=kept
+    )
 
 
 @router.get("/{course_id}", response_model=CourseResponse, summary="Read a course")
 def read_course(course_id: int, current_user: CurrentUser, db: DbSession) -> object:
-    return CourseService(db).get_for(course_id, current_user)
+    return _course_response(CourseService(db).get_for(course_id, current_user))
 
 
 @router.patch("/{course_id}", response_model=CourseResponse, summary="Update own course")
 def update_course(
     course_id: int, payload: CourseUpdate, current_user: TeacherUser, db: DbSession
 ) -> object:
-    return CourseService(db).update(course_id, payload, current_user)
+    return _course_response(CourseService(db).update(course_id, payload, current_user))
 
 
 @router.get(

@@ -35,6 +35,10 @@ class CourseResponse(ORMModel):
     semester: int | None
     session: str | None
     created_by: int
+
+    #: Who runs it, by name. An administrator assigning courses needs to see the current
+    #: holder without resolving an integer against the user directory by hand.
+    teacher_name: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -98,3 +102,23 @@ class BulkEnrollmentResponse(BaseModel):
     @property
     def enrolled_count(self) -> int:
         return len(self.enrolled)
+
+
+class CourseAssign(BaseModel):
+    """Hand a course to a teacher. Identified by login id, which is what an admin has."""
+
+    teacher_user_id: str = Field(min_length=1, max_length=50)
+
+
+class CourseAssignResponse(BaseModel):
+    """The course as it now stands, and what deliberately did not move with it."""
+
+    course: CourseResponse
+
+    #: Exams on this course still authored by whoever held it before.
+    #:
+    #: Reassigning does not rewrite authorship of work already done: an exam is
+    #: somebody's, and its results point at them. Reporting the count means an
+    #: administrator learns that from the response rather than from a teacher who
+    #: cannot open a paper they expected to inherit.
+    exams_kept_by_previous_teacher: int

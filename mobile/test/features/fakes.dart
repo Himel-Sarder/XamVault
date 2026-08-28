@@ -177,6 +177,27 @@ class FakeCourseRepository implements CourseRepository {
     return get(id);
   }
 
+  final List<({int courseId, String teacher})> assigned = [];
+  int examsKeptOnAssign = 0;
+
+  @override
+  Future<({Course course, int examsKept})> assignTeacher(
+    int courseId,
+    String teacherUserId,
+  ) async {
+    assigned.add((courseId: courseId, teacher: teacherUserId));
+    final index = courses.indexWhere((c) => c.id == courseId);
+    final updated = Course(
+      id: courseId,
+      courseCode: courses[index].courseCode,
+      courseName: courses[index].courseName,
+      createdBy: 99,
+      teacherName: 'Teacher $teacherUserId',
+    );
+    courses[index] = updated;
+    return (course: updated, examsKept: examsKeptOnAssign);
+  }
+
   // ---------------------------------------------------------- enrolment
 
   List<Enrollment> roll = [];

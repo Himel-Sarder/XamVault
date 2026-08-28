@@ -294,3 +294,127 @@ def test_an_oversized_batch_is_refused(
         json={"student_user_ids": [f"s{n}" for n in range(201)]},
     )
     assert response.status_code == 422
+
+
+# ------------------------------------------------- putting a teacher in charge
+
+
+def _assign(client, api, auth_headers, actor, course_id, login_id):
+    return client.post(
+        f"{api}/courses/{course_id}/assign",
+        headers=auth_headers(actor),
+        json={"teacher_user_id": login_id},
+    )
+
+
+def test_an_admin_hands_a_course_to_a_teacher(
+    client, api, auth_headers, admin, teacher, other_teacher, make_course
+):
+    course = make_course(teacher)
+    response = _assign(client, api, auth_headers, admin, course.id, other_teacher.user_id)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["course"]["created_by"] == other_teacher.id
+    assert body["course"]["teacher_name"] == other_teacher.name
+
+
+def test_the_new_teacher_can_now_manage_it_and_the_old_one_cannot(
+    client, api, auth_headers, admin, teacher, other_teacher, make_course
+):
+    """Ownership is what decides who may edit a course, so this is the whole point."""
+    course = make_course(teacher)
+    _assign(client, api, auth_headers, admin, course.id, other_teacher.user_id)
+
+    assert client.patch(
+        f"{api}/courses/{course.id}",
+        headers=auth_headers(other_teacher),
+        json={"course_name": "Renamed by the new holder"},
+    ).status_code == 200
+    # And it is no longer the previous teacher's to change -- not found, because it is
+    # no longer visible to them at all.
+    assert client.patch(
+        f"{api}/courses/{course.id}",
+        headers=auth_headers(teacher),
+        json={"course_name": "Renamed by the old holder"},
+    ).status_code == 404
+
+
+def test_exams_keep_their_author_and_the_count_says_so(
+    client, api, auth_headers, admin, teacher, other_teacher, teacher_course,
+    make_published_exam,
+):
+    """An exam is somebody's work and its results point at them.
+
+    Rewriting that because the course changed hands would misattribute it, so the
+    response reports what stayed rather than leaving the new teacher to discover it.
+    """
+    make_published_exam(teacher, teacher_course)
+    make_published_exam(teacher, teacher_course)
+
+    response = _assign(
+        client, api, auth_headers, admin, teacher_course.id, other_teacher.user_id
+    )
+    assert response.status_code == 200
+    assert response.json()["exams_kept_by_previous_teacher"] == 2
+
+
+def test_a_student_cannot_be_put_in_charge(
+    client, api, auth_headers, admin, teacher, student, make_course
+):
+    course = make_course(teacher)
+    response = _assign(client, api, auth_headers, admin, course.id, student.user_id)
+    assert response.status_code == 400
+    assert response.json()["code"] == "not_a_teacher"
+
+
+def test_a_deactivated_teacher_cannot_be_put_in_charge(
+    client, api, auth_headers, admin, teacher, other_teacher, make_course, db
+):
+    other_teacher.is_active = False
+    db.commit()
+
+    course = make_course(teacher)
+    response = _assign(client, api, auth_headers, admin, course.id, other_teacher.user_id)
+    assert response.status_code == 400
+    assert response.json()["code"] == "user_deactivated"
+
+
+def test_assigning_to_the_current_holder_is_refused(
+    client, api, auth_headers, admin, teacher, make_course
+):
+    course = make_course(teacher)
+    response = _assign(client, api, auth_headers, admin, course.id, teacher.user_id)
+    assert response.status_code == 409
+    assert response.json()["code"] == "already_assigned"
+
+
+def test_an_unknown_login_is_not_found(
+    client, api, auth_headers, admin, teacher, make_course
+):
+    course = make_course(teacher)
+    assert _assign(
+        client, api, auth_headers, admin, course.id, "nobody"
+    ).status_code == 404
+
+
+def test_only_an_admin_may_assign(
+    client, api, auth_headers, teacher, other_teacher, student, make_course
+):
+    course = make_course(teacher)
+    # Not even the teacher who currently holds it: handing work to someone else is an
+    # administrative act, not an editorial one.
+    assert _assign(
+        client, api, auth_headers, teacher, course.id, other_teacher.user_id
+    ).status_code == 403
+    assert _assign(
+        client, api, auth_headers, student, course.id, other_teacher.user_id
+    ).status_code == 403
+
+
+def test_the_course_list_names_who_runs_each_one(
+    client, api, auth_headers, admin, teacher, make_course
+):
+    make_course(teacher)
+    page = client.get(f"{api}/courses", headers=auth_headers(admin)).json()
+    assert page["items"][0]["teacher_name"] == teacher.name

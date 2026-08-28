@@ -62,6 +62,25 @@ class CourseRepository {
     return Course.fromJson(data);
   }
 
+  /// Puts a teacher in charge of a course. Administrators only.
+  ///
+  /// Returns how many exams stayed with the previous holder — reassigning does not
+  /// rewrite authorship of work already done, and the new teacher would otherwise
+  /// discover that by failing to open a paper.
+  Future<({Course course, int examsKept})> assignTeacher(
+    int courseId,
+    String teacherUserId,
+  ) async {
+    final data = await _api.post<Map<String, dynamic>>(
+      '/courses/$courseId/assign',
+      data: {'teacher_user_id': teacherUserId},
+    );
+    return (
+      course: Course.fromJson(data['course'] as Map<String, dynamic>),
+      examsKept: data['exams_kept_by_previous_teacher'] as int? ?? 0,
+    );
+  }
+
   // ------------------------------------------------------------- enrolment
 
   Future<List<Enrollment>> enrollments(int courseId) async {

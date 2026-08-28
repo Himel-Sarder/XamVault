@@ -62,9 +62,15 @@ class CoursesScreen extends ConsumerWidget {
                 course: page.items[index],
                 onTap: isTeacher
                     ? () => context.push(Routes.teacherCourse(page.items[index].id))
+                    // An admin's job here is who runs it and who is on it, so the row
+                    // opens the form that holds both rather than jumping straight to
+                    // the roll.
                     : (isAdmin
-                        ? () => context
-                            .push(Routes.adminCourseEnrollments(page.items[index].id))
+                        ? () async {
+                            await context
+                                .push(Routes.adminCourseEdit(page.items[index].id));
+                            ref.invalidate(courseProvider);
+                          }
                         : null),
               ),
             ),

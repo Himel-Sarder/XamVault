@@ -14,3 +14,15 @@ final adminUsersProvider =
         pageSize: 50,
       );
 });
+
+/// Every teacher, for the "who runs this course" picker.
+///
+/// Not autoDispose: a course form and an assignment dialog both want it, and staff
+/// lists change far more slowly than the screens that read them.
+final teachersProvider = FutureProvider<List<User>>((ref) async {
+  final page = await ref.watch(adminRepositoryProvider).users(
+        role: UserRole.teacher,
+        pageSize: 100,
+      );
+  return page.items;
+});

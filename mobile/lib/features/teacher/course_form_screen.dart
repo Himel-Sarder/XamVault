@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/department.dart';
+import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/models/user.dart';
+import 'package:uniexam/providers/admin_provider.dart';
+import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
@@ -33,6 +37,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
   int? _departmentId;
   int? _semester;
   bool _isActive = true;
+  String? _teacherName;
   bool _saving = false;
   bool _loaded = false;
   String? _error;
@@ -54,6 +59,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
     _departmentId = course.departmentId;
     _semester = course.semester;
     _isActive = course.isActive;
+    _teacherName = course.teacherName;
   }
 
   Future<void> _save() async {
@@ -119,6 +125,9 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
 
   Widget _form(BuildContext context, AsyncValue<List<Department>> departments) {
     final theme = Theme.of(context);
+    // Assignment is an administrative act, not an editorial one: a teacher does not
+    // hand their own course to somebody else, so the field is not shown to them.
+    final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.isEditing ? 'Edit Course' : 'New Course')),
@@ -211,6 +220,30 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
                 helperText: 'For example 2025-2026',
               ),
             ),
+            if (widget.isEditing && isAdmin) ...[
+              const SizedBox(height: 20),
+              _AssignTeacher(
+                courseId: widget.courseId!,
+                currentTeacher: _teacherName,
+                onAssigned: (name, examsKept) {
+                  setState(() => _teacherName = name);
+                  refreshCourse(ref, widget.courseId!);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        examsKept == 0
+                            ? '$name now runs this course.'
+                            : '$name now runs this course. '
+                                '$examsKept exam${examsKept == 1 ? '' : 's'} '
+                                'stayed with the previous teacher, who wrote them.',
+                      ),
+                      duration: const Duration(seconds: 6),
+                    ),
+                  );
+                },
+              ),
+            ],
             if (widget.isEditing) ...[
               const SizedBox(height: 8),
               SwitchListTile(
@@ -256,6 +289,123 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Who runs this course, and the way to change it.
+///
+/// Shown to administrators on an existing course only. There is nothing to assign
+/// before the course exists, and a teacher does not hand their own course away — that
+/// is an administrative act, so it lives behind an administrative role.
+class _AssignTeacher extends ConsumerStatefulWidget {
+  const _AssignTeacher({
+    required this.courseId,
+    required this.currentTeacher,
+    required this.onAssigned,
+  });
+
+  final int courseId;
+  final String? currentTeacher;
+  final void Function(String name, int examsKept) onAssigned;
+
+  @override
+  ConsumerState<_AssignTeacher> createState() => _AssignTeacherState();
+}
+
+class _AssignTeacherState extends ConsumerState<_AssignTeacher> {
+  bool _busy = false;
+
+  Future<void> _pick() async {
+    final teachers = await ref.read(teachersProvider.future);
+    if (!mounted) return;
+
+    final chosen = await showDialog<User>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        key: const Key('assign_teacher_dialog'),
+        title: const Text('Who runs this course?'),
+        children: [
+          if (teachers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: Text('No teacher accounts exist yet.'),
+            ),
+          for (final teacher in teachers)
+            SimpleDialogOption(
+              key: Key('assign_${teacher.userId}'),
+              onPressed: () => Navigator.of(dialogContext).pop(teacher),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: dialogContext.status.info.container,
+                  child: Icon(
+                    Icons.school_outlined,
+                    size: 20,
+                    color: dialogContext.status.info.foreground,
+                  ),
+                ),
+                title: Text(teacher.name),
+                subtitle: Text(teacher.userId),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final result = await ref
+          .read(courseRepositoryProvider)
+          .assignTeacher(widget.courseId, chosen.userId);
+      widget.onAssigned(chosen.name, result.examsKept);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final assigned = widget.currentTeacher != null;
+    final tint = assigned ? context.status.success : context.status.warning;
+
+    return Card(
+      child: ListTile(
+        key: const Key('assign_teacher'),
+        onTap: _busy ? null : _pick,
+        leading: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tint.container,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.school_outlined, size: 20, color: tint.foreground),
+        ),
+        title: const Text('Teacher in charge'),
+        subtitle: Text(
+          widget.currentTeacher ?? 'Nobody assigned yet',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: tint.foreground,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: _busy
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              )
+            : const Icon(Icons.swap_horiz),
       ),
     );
   }

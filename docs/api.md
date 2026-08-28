@@ -396,6 +396,33 @@ confirmation names them before the act rather than after.
 > Note: SQLite ignores foreign keys unless told otherwise, so before the pragma was
 > added neither the cascade nor the RESTRICT was exercised by any test. Both are now.
 
+## 2e. Assigning a course to a teacher
+
+`POST /courses/{id}/assign` with `{"teacher_user_id": "T1001"}` — admin only.
+
+Ownership of a course is `created_by`, and that is what decides who may edit it, publish
+exams on it and manage its roll. So assigning is the act of putting somebody in charge
+of running it, and it is administrative rather than editorial: a teacher cannot hand
+their own course to someone else.
+
+It deliberately does **not** move the exams already written on the course. An exam
+carries its own `teacher_id`, its results point at that person, and rewriting authorship
+because the course changed hands would misattribute somebody's work. The response says
+how many stayed:
+
+```json
+{ "course": { ... }, "exams_kept_by_previous_teacher": 2 }
+```
+
+That count exists so an administrator learns it from the response rather than from a
+teacher who cannot open a paper they expected to inherit.
+
+Refused for a student or a deactivated account (`400 not_a_teacher`,
+`400 user_deactivated`) and for the teacher who already holds it (`409 already_assigned`).
+
+Every course response now carries `teacher_name`, eager-loaded with the page, so a list
+of every course in the system can be read without resolving integers by hand.
+
 ## 3. Planned surface (later phases)
 
 ```

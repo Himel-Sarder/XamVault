@@ -47,7 +47,9 @@ class CourseRepository:
     def list_visible_paged(
         self, viewer: User, *, offset: int, limit: int, active_only: bool = False
     ) -> tuple[list[Course], int]:
-        base = self._visible_query(viewer)
+        # creator is rendered on every row, so load it with the page rather than
+        # issuing one query per course.
+        base = self._visible_query(viewer).options(selectinload(Course.creator))
         if active_only:
             base = base.where(Course.is_active.is_(True))
         total = self.db.execute(
