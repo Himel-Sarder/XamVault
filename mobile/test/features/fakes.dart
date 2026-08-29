@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/analytics.dart';
+import 'package:uniexam/models/app_settings.dart';
 import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/models/auth_tokens.dart';
 import 'package:uniexam/models/bank_question.dart';
 import 'package:uniexam/models/course.dart';
+import 'package:uniexam/models/course_deletion_impact.dart';
 import 'package:uniexam/models/department.dart';
 import 'package:uniexam/models/enrollment.dart';
 import 'package:uniexam/models/exam.dart';
@@ -26,6 +28,7 @@ import 'package:uniexam/repositories/department_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
 import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
+import 'package:uniexam/repositories/settings_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
 const demoDepartment = Department(id: 1, code: 'CSE', name: 'Computer Science & Engineering');
@@ -136,6 +139,27 @@ class FakeCourseRepository implements CourseRepository {
 
   @override
   Future<Course> get(int id) async => courses.firstWhere((course) => course.id == id);
+
+  /// What a delete would take with it. Set per test; the default says "nothing else",
+  /// which is the case a confirmation should be quietest about.
+  CourseDeletionImpact impact = const CourseDeletionImpact(
+    exams: 0,
+    questionsOnThoseExams: 0,
+    attempts: 0,
+    results: 0,
+    enrolments: 0,
+  );
+
+  final List<int> deleted = [];
+
+  @override
+  Future<CourseDeletionImpact> deletionImpact(int courseId) async => impact;
+
+  @override
+  Future<void> delete(int courseId) async {
+    deleted.add(courseId);
+    courses.removeWhere((course) => course.id == courseId);
+  }
 
   // ------------------------------------------------------------- writes
 
@@ -1623,5 +1647,25 @@ class FakeNotificationRepository implements NotificationRepository {
     final read = notifications.where((n) => n.isRead).length;
     notifications.removeWhere((n) => n.isRead);
     return read;
+  }
+}
+
+class FakeSettingsRepository implements SettingsRepository {
+  FakeSettingsRepository({this.universityName = 'University'});
+
+  String universityName;
+
+  /// Every name that was saved, in order, so a test can tell "saved once" from
+  /// "saved on every keystroke".
+  final List<String> saved = [];
+
+  @override
+  Future<AppSettings> get() async => AppSettings(universityName: universityName);
+
+  @override
+  Future<AppSettings> setUniversityName(String name) async {
+    saved.add(name);
+    universityName = name;
+    return AppSettings(universityName: name);
   }
 }

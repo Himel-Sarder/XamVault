@@ -75,50 +75,70 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     }
     if (!mounted) return;
 
-    final owns = ['courses', 'exams', 'questions']
-        .where((key) => (impact[key] ?? 0) > 0)
-        .map((key) => '${impact[key]} $key')
-        .toList();
-    final loses = ['attempts', 'results', 'enrolments']
-        .where((key) => (impact[key] ?? 0) > 0)
-        .map((key) => '${impact[key]} $key')
-        .toList();
+    String plural(int count, String singular, [String? many]) =>
+        '$count ${count == 1 ? singular : (many ?? '${singular}s')}';
+
+    // Their own work, which goes with the account.
+    final authored = [
+      if ((impact['courses'] ?? 0) > 0) plural(impact['courses']!, 'course'),
+      if ((impact['exams'] ?? 0) > 0) plural(impact['exams']!, 'exam'),
+      if ((impact['questions'] ?? 0) > 0) plural(impact['questions']!, 'question'),
+    ];
+    // Their own record as somebody who sat exams.
+    final own = [
+      if ((impact['attempts'] ?? 0) > 0) plural(impact['attempts']!, 'attempt'),
+      if ((impact['results'] ?? 0) > 0) plural(impact['results']!, 'result'),
+      if ((impact['enrolments'] ?? 0) > 0) plural(impact['enrolments']!, 'enrolment'),
+    ];
+    // Other people's work, destroyed as a consequence. Named separately because it is
+    // the part an administrator is least likely to have thought about.
+    final others = [
+      if ((impact['student_attempts'] ?? 0) > 0)
+        plural(impact['student_attempts']!, 'student attempt'),
+      if ((impact['student_results'] ?? 0) > 0)
+        plural(impact['student_results']!, 'student result'),
+    ];
+
+    final sentences = <String>[
+      if (authored.isEmpty && own.isEmpty)
+        '${user.name} (${user.userId}) will be removed. They have no exam history, '
+            'so nothing else goes with them.'
+      else
+        '${user.name} (${user.userId}) will be removed.',
+      if (authored.isNotEmpty) 'Their ${authored.join(', ')} go too.',
+      if (own.isNotEmpty) 'So do their ${own.join(', ')}.',
+      if (others.isNotEmpty)
+        'This also destroys ${others.join(' and ')} belonging to students who are '
+            'not being deleted.',
+      if (authored.isNotEmpty || own.isNotEmpty || others.isNotEmpty)
+        'This cannot be undone.',
+    ];
+    // Anything at all being destroyed earns the red button; the wording above says
+    // what, and the colour says that there is a what.
+    final severe = authored.isNotEmpty || own.isNotEmpty || others.isNotEmpty;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         key: const Key('delete_user_dialog'),
-        title: Text(owns.isEmpty ? 'Delete this account?' : 'This account cannot be deleted'),
-        content: Text(
-          owns.isNotEmpty
-              // Blocked at the database, because an exam other students sat must not
-              // lose its author. Said here so it is read before the attempt, not after.
-              ? '${user.name} authored ${owns.join(', ')}. Exams and results belonging '
-                  'to other people depend on those, so the account cannot be removed. '
-                  'Reassign or delete that work first.'
-              : loses.isEmpty
-                  ? '${user.name} (${user.userId}) will be removed. They have no exam '
-                      'history, so nothing else goes with them.'
-                  : '${user.name} (${user.userId}) will be removed, and so will their '
-                      '${loses.join(', ')}. This cannot be undone.',
-        ),
+        title: const Text('Delete this account?'),
+        content: Text(sentences.join(' ')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(owns.isEmpty ? 'Keep' : 'Close'),
+            child: const Text('Keep'),
           ),
-          if (owns.isEmpty)
-            FilledButton(
-              key: const Key('confirm_delete_user'),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: loses.isEmpty
-                  ? null
-                  : FilledButton.styleFrom(
-                      backgroundColor: dialogContext.status.danger.foreground,
-                      foregroundColor: Colors.white,
-                    ),
-              child: Text(loses.isEmpty ? 'Delete' : 'Delete everything'),
-            ),
+          FilledButton(
+            key: const Key('confirm_delete_user'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: severe
+                ? FilledButton.styleFrom(
+                    backgroundColor: dialogContext.status.danger.foreground,
+                    foregroundColor: Colors.white,
+                  )
+                : null,
+            child: Text(severe ? 'Delete everything' : 'Delete'),
+          ),
         ],
       ),
     );

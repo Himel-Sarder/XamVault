@@ -276,20 +276,56 @@ def test_an_admin_cannot_delete_themselves(client, api, auth_headers, admin):
     assert response.json()["code"] == "cannot_delete_self"
 
 
-def test_an_author_of_exams_is_not_deleted(
-    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam
+def test_deleting_a_teacher_takes_their_courses_exams_and_questions(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam, db
 ):
-    """The database says RESTRICT because an exam other students sat must not lose its
-    author. Checking first turns an integrity error into a sentence."""
-    make_published_exam(teacher, teacher_course)
+    """A teacher who has left takes their work with them.
+
+    Authoring content used to be a refusal. It is not any more: an administrator asking
+    to delete a teacher is asking for exactly this, and the confirmation is told the
+    numbers first.
+    """
+    from app.models.course import Course
+    from app.models.exam import Exam
+    from app.models.question import Question
+
+    exam_id = make_published_exam(teacher, teacher_course).id
+    course_id = teacher_course.id
+    teacher_id = teacher.id
     client.patch(
         f"{api}/users/{teacher.id}", headers=auth_headers(admin), json={"is_active": False}
     )
 
-    response = _delete(client, api, auth_headers, admin, teacher.id)
-    assert response.status_code == 409
-    assert response.json()["code"] == "user_owns_content"
-    assert "exams" in response.json()["detail"]
+    assert _delete(client, api, auth_headers, admin, teacher.id).status_code == 204
+
+    # The delete happened in the request's own session; this one still holds the rows
+    # it read earlier, and would answer from that cache rather than from the database.
+    db.expunge_all()
+
+    assert db.get(Course, course_id) is None
+    assert db.get(Exam, exam_id) is None
+    assert db.query(Question).filter(Question.created_by == teacher_id).count() == 0
+
+
+def test_the_impact_separates_their_work_from_other_people_s(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam
+):
+    """The second number is the one worth reading twice.
+
+    Courses and exams are the teacher's own. Attempts and results on those exams belong
+    to students who are not being deleted, and they go too -- so they are counted apart
+    rather than folded into one total that hides them.
+    """
+    make_published_exam(teacher, teacher_course)
+
+    impact = client.get(
+        f"{api}/users/{teacher.id}/deletion-impact", headers=auth_headers(admin)
+    ).json()
+
+    assert impact["courses"] == 1
+    assert impact["exams"] == 1
+    assert "student_attempts" in impact
+    assert "student_results" in impact
 
 
 def test_deleting_a_student_takes_their_attempts_with_them(

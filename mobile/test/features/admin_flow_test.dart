@@ -634,16 +634,18 @@ void main() {
       expect(admin.deletedUsers, [3]);
     });
 
-    testWidgets('an author of exams is refused before the attempt', (tester) async {
+    testWidgets('deleting a teacher says their work goes with them', (tester) async {
       useTallSurface(tester);
       final admin = FakeAdminRepository(users: directory())
         ..impact = const {
           'courses': 2,
           'exams': 5,
-          'questions': 0,
+          'questions': 12,
           'attempts': 0,
           'results': 0,
           'enrolments': 0,
+          'student_attempts': 0,
+          'student_results': 0,
         };
       await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
       await tester.pumpAndSettle();
@@ -651,14 +653,41 @@ void main() {
       await tester.tap(find.byKey(const Key('delete_user_3')));
       await tester.pumpAndSettle();
 
-      // Blocked at the database; said here so it is read before the attempt.
-      expect(find.text('This account cannot be deleted'), findsOneWidget);
+      // Authoring content used to be a refusal. It is what an administrator asking to
+      // delete a teacher is asking for, so it is a warning with numbers in it now.
+      expect(find.textContaining('2 courses'), findsOneWidget);
       expect(find.textContaining('5 exams'), findsOneWidget);
-      expect(find.byKey(const Key('confirm_delete_user')), findsNothing);
+      expect(find.textContaining('12 questions'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.tap(find.byKey(const Key('confirm_delete_user')));
       await tester.pumpAndSettle();
-      expect(admin.deletedUsers, isEmpty);
+      expect(admin.deletedUsers, [3]);
+    });
+
+    testWidgets("it names other students' work separately", (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory())
+        ..impact = const {
+          'courses': 1,
+          'exams': 3,
+          'questions': 0,
+          'attempts': 0,
+          'results': 0,
+          'enrolments': 0,
+          'student_attempts': 47,
+          'student_results': 31,
+        };
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_user_3')));
+      await tester.pumpAndSettle();
+
+      // The part an administrator is least likely to have thought about: this work
+      // belongs to students who are not being deleted.
+      expect(find.textContaining('47 student attempts'), findsOneWidget);
+      expect(find.textContaining('31 student results'), findsOneWidget);
+      expect(find.textContaining('not being deleted'), findsOneWidget);
     });
 
     testWidgets('an 8-digit student is created with the password the admin set',
