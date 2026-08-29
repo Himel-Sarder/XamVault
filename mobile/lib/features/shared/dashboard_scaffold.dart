@@ -232,10 +232,21 @@ class IdentityCard extends ConsumerWidget {
 }
 
 class CourseTile extends StatelessWidget {
-  const CourseTile({super.key, required this.course, this.onTap});
+  const CourseTile({
+    super.key,
+    required this.course,
+    this.onTap,
+    this.onDelete,
+    this.busy = false,
+  });
 
   final Course course;
   final VoidCallback? onTap;
+
+  /// Shown only where deleting is offered, which is the course list. The dashboard
+  /// passes nothing, so a summary row cannot destroy anything by accident.
+  final VoidCallback? onDelete;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -289,12 +300,34 @@ class CourseTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: archived
-                  ? StatusPill(label: 'Archived', colour: context.status.neutral)
-                  : (onTap == null
-                      ? null
-                      : Icon(Icons.chevron_right,
-                          color: theme.colorScheme.onSurfaceVariant)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (archived)
+                    StatusPill(label: 'Archived', colour: context.status.neutral),
+                  if (onDelete != null) ...[
+                    const SizedBox(width: 4),
+                    busy
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            key: Key('delete_course_${course.id}'),
+                            tooltip: 'Delete course',
+                            onPressed: onDelete,
+                            icon: Icon(Icons.delete_outline,
+                                color: context.status.danger.foreground),
+                          ),
+                  ] else if (!archived && onTap != null)
+                    Icon(Icons.chevron_right,
+                        color: theme.colorScheme.onSurfaceVariant),
+                ],
+              ),
             ),
           ),
         ],

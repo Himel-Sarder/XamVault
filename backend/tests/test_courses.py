@@ -470,3 +470,86 @@ def test_both_stay_optional(client, api, auth_headers, teacher):
     assert response.status_code == 201
     assert response.json()["study_year"] is None
     assert response.json()["semester"] is None
+
+
+# ------------------------------------------------------------------- deletion
+
+
+def test_the_impact_counts_what_deleting_a_course_would_destroy(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam
+):
+    """Read before the confirmation, so nobody discovers the cascade afterwards."""
+    make_published_exam(teacher, teacher_course)
+
+    impact = client.get(
+        f"{api}/courses/{teacher_course.id}/deletion-impact",
+        headers=auth_headers(admin),
+    )
+
+    assert impact.status_code == 200
+    assert impact.json()["exams"] == 1
+    assert impact.json()["enrolments"] == 0
+
+
+def test_an_admin_deletes_any_course_and_its_exams_go_with_it(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam, db
+):
+    from app.models.course import Course
+    from app.models.exam import Exam
+
+    exam_id = make_published_exam(teacher, teacher_course).id
+    course_id = teacher_course.id
+
+    assert client.delete(
+        f"{api}/courses/{course_id}", headers=auth_headers(admin)
+    ).status_code == 204
+
+    db.expunge_all()
+    assert db.get(Course, course_id) is None
+    assert db.get(Exam, exam_id) is None
+
+
+def test_the_teacher_who_runs_it_may_delete_it_too(
+    client, api, auth_headers, teacher, teacher_course
+):
+    assert client.delete(
+        f"{api}/courses/{teacher_course.id}", headers=auth_headers(teacher)
+    ).status_code == 204
+
+
+def test_another_teacher_cannot_delete_someone_else_s_course(
+    client, api, auth_headers, other_teacher, teacher_course
+):
+    """404 rather than 403: whether a course exists is not this teacher's business."""
+    response = client.delete(
+        f"{api}/courses/{teacher_course.id}", headers=auth_headers(other_teacher)
+    )
+    assert response.status_code == 404
+
+
+def test_a_student_cannot_delete_a_course(
+    client, api, auth_headers, student, teacher_course
+):
+    assert client.delete(
+        f"{api}/courses/{teacher_course.id}", headers=auth_headers(student)
+    ).status_code == 403
+
+
+def test_the_questions_stay_in_their_author_s_bank(
+    client, api, auth_headers, admin, teacher, teacher_course, make_published_exam, db
+):
+    """A question lives in the bank, not on the course.
+
+    Deleting a course should not quietly empty a teacher's bank of everything they ever
+    set on it -- the question is reusable, and that is the point of the bank.
+    """
+    from app.models.question import Question
+
+    make_published_exam(teacher, teacher_course)
+    before = db.query(Question).filter(Question.created_by == teacher.id).count()
+    assert before > 0
+
+    client.delete(f"{api}/courses/{teacher_course.id}", headers=auth_headers(admin))
+
+    db.expunge_all()
+    assert db.query(Question).filter(Question.created_by == teacher.id).count() == before

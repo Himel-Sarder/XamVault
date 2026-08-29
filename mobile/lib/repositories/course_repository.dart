@@ -1,5 +1,6 @@
 import 'package:uniexam/core/api_client.dart';
 import 'package:uniexam/models/course.dart';
+import 'package:uniexam/models/course_deletion_impact.dart';
 import 'package:uniexam/models/enrollment.dart';
 import 'package:uniexam/models/paged.dart';
 
@@ -86,6 +87,16 @@ class CourseRepository {
   }
 
   // ------------------------------------------------------------- enrolment
+
+  /// What deleting this course would destroy, counted before it happens.
+  Future<CourseDeletionImpact> deletionImpact(int courseId) async {
+    final data = await _api.get<Map<String, dynamic>>(
+      '/courses/$courseId/deletion-impact',
+    );
+    return CourseDeletionImpact.fromJson(data);
+  }
+
+  Future<void> delete(int courseId) => _api.delete('/courses/$courseId');
 
   Future<List<Enrollment>> enrollments(int courseId) async {
     final data = await _api.get<List<dynamic>>('/courses/$courseId/enrollments');

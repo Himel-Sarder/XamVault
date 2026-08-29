@@ -15,8 +15,10 @@ from app.core.exceptions import (
     NotFoundError,
     PermissionDeniedError,
 )
+from app.models.attempt import ExamAttempt
 from app.models.course import Course, CourseEnrollment
-from app.models.exam import Exam
+from app.models.exam import Exam, ExamQuestion
+from app.models.result import Result
 from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories.course_repository import CourseRepository
@@ -25,6 +27,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.course import (
     BulkEnrollmentResponse,
     CourseCreate,
+    CourseDeletionImpact,
     CourseUpdate,
     EnrollmentCreate,
     SkippedEnrolment,
@@ -111,6 +114,75 @@ class CourseService:
             setattr(course, field, value)
         self.db.commit()
         return course
+
+    # ---------------------------------------------------------------- removal
+
+    def deletion_impact(self, course_id: int, actor: User) -> CourseDeletionImpact:
+        """What deleting this course would destroy.
+
+        Counted rather than estimated, and read before the confirmation is shown. A
+        course is the root of a fair amount: every exam written on it, every attempt at
+        those exams and every result from them. Nobody should discover that afterwards.
+        """
+        course = self._get_manageable(course_id, actor)
+
+        exam_ids = list(
+            self.db.execute(select(Exam.id).where(Exam.course_id == course.id))
+            .scalars()
+            .all()
+        )
+
+        def count(model, column) -> int:
+            if not exam_ids:
+                return 0
+            return int(
+                self.db.execute(
+                    select(func.count()).select_from(model).where(column.in_(exam_ids))
+                ).scalar_one()
+            )
+
+        attempt_ids = (
+            list(
+                self.db.execute(
+                    select(ExamAttempt.id).where(ExamAttempt.exam_id.in_(exam_ids))
+                )
+                .scalars()
+                .all()
+            )
+            if exam_ids
+            else []
+        )
+
+        return CourseDeletionImpact(
+            exams=len(exam_ids),
+            # The links, not the bank entries: a question written for this course still
+            # belongs to whoever wrote it and stays in their bank, reusable elsewhere.
+            questions_on_those_exams=count(ExamQuestion, ExamQuestion.exam_id),
+            attempts=len(attempt_ids),
+            results=count(Result, Result.exam_id),
+            enrolments=int(
+                self.db.execute(
+                    select(func.count())
+                    .select_from(CourseEnrollment)
+                    .where(CourseEnrollment.course_id == course.id)
+                ).scalar_one()
+            ),
+        )
+
+    def delete(self, course_id: int, actor: User) -> None:
+        """Removes a course and everything written on it.
+
+        Whoever may manage the course may delete it -- the teacher who runs it, or an
+        administrator. The cascade is the database's: exams go with the course, and
+        attempts, answers, results, join requests and security events go with the exams.
+
+        Questions are deliberately spared. They live in their author's bank rather than
+        on the course, and deleting a course should not quietly empty the bank of
+        everything that was ever set on it.
+        """
+        course = self._get_manageable(course_id, actor)
+        self.db.delete(course)
+        self.db.commit()
 
     def assign_teacher(
         self, course_id: int, teacher_user_id: str, actor: User

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.core.deps import AdminUser, CurrentUser, DbSession, TeacherUser
 from app.schemas.common import Page, PageParams
 from app.schemas.course import (
+    CourseDeletionImpact,
     BulkEnrollmentCreate,
     CourseAssign,
     CourseAssignResponse,
@@ -89,6 +90,28 @@ def update_course(
     course_id: int, payload: CourseUpdate, current_user: TeacherUser, db: DbSession
 ) -> object:
     return _course_response(CourseService(db).update(course_id, payload, current_user))
+
+
+@router.get(
+    "/{course_id}/deletion-impact",
+    response_model=CourseDeletionImpact,
+    summary="What deleting this course would destroy",
+)
+def course_deletion_impact(
+    course_id: int, current_user: TeacherUser, db: DbSession
+) -> object:
+    return CourseService(db).deletion_impact(course_id, current_user)
+
+
+@router.delete(
+    "/{course_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a course and everything on it",
+)
+def delete_course(course_id: int, current_user: TeacherUser, db: DbSession) -> None:
+    """Takes the course's exams, attempts, results and roll with it. Questions stay in
+    their author's bank. Read ``/deletion-impact`` first and show the numbers."""
+    CourseService(db).delete(course_id, current_user)
 
 
 @router.get(

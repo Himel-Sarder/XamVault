@@ -125,3 +125,18 @@ class CourseAssignResponse(BaseModel):
     #: administrator learns that from the response rather than from a teacher who
     #: cannot open a paper they expected to inherit.
     exams_kept_by_previous_teacher: int
+
+
+class CourseDeletionImpact(BaseModel):
+    """What deleting a course would take with it, counted before it happens.
+
+    Read by the confirmation dialog, so the person clicking is told what they are about
+    to destroy rather than discovering it afterwards. The same shape as the account
+    version, for the same reason.
+    """
+
+    exams: int
+    questions_on_those_exams: int
+    attempts: int
+    results: int
+    enrolments: int
