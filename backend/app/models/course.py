@@ -3,7 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -19,6 +27,15 @@ class Course(Base):
     __table_args__ = (
         # A course code is reused across academic sessions but must be unique within one.
         UniqueConstraint("course_code", "session", name="uq_courses_code_session"),
+        # The same bounds the student profile carries, so a course cannot be filed
+        # against a year that no student can be in.
+        CheckConstraint(
+            "study_year IS NULL OR (study_year >= 1 AND study_year <= 4)",
+            name="study_year",
+        ),
+        CheckConstraint(
+            "semester IS NULL OR (semester >= 1 AND semester <= 2)", name="semester"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -27,6 +44,14 @@ class Course(Base):
     department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    #: Year of the programme, 1 to 4.
+    #:
+    #: Named study_year rather than year because ``session`` next to it already holds
+    #: the academic year as "2025-2026", and two fields both called some kind of year
+    #: would be read wrongly at least once. The UI label is simply "Year".
+    study_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    #: Which half of that year, 1 or 2.
     semester: Mapped[int | None] = mapped_column(Integer, nullable=True)
     session: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_by: Mapped[int] = mapped_column(

@@ -30,6 +30,7 @@ class CourseRepository {
     required String courseCode,
     required String courseName,
     int? departmentId,
+    int? studyYear,
     int? semester,
     String? session,
   }) async {
@@ -37,6 +38,7 @@ class CourseRepository {
       'course_code': courseCode,
       'course_name': courseName,
       'department_id': ?departmentId,
+      'study_year': ?studyYear,
       'semester': ?semester,
       'session': ?session,
     });
@@ -48,6 +50,7 @@ class CourseRepository {
     int id, {
     String? courseName,
     int? departmentId,
+    int? studyYear,
     int? semester,
     String? session,
     bool? isActive,
@@ -55,6 +58,7 @@ class CourseRepository {
     final data = await _api.patch<Map<String, dynamic>>('/courses/$id', data: {
       'course_name': ?courseName,
       'department_id': ?departmentId,
+      'study_year': ?studyYear,
       'semester': ?semester,
       'session': ?session,
       'is_active': ?isActive,

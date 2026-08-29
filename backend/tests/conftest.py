@@ -155,7 +155,8 @@ def make_user(db: Session, department: Department):
                     user_id=user.id,
                     student_id=login_id,
                     department_id=department.id,
-                    semester=6,
+                    study_year=3,
+                    semester=2,
                     session="2025-2026",
                 )
             )
@@ -209,7 +210,8 @@ def make_course(db: Session, department: Department):
             course_code=code or f"CSE-{300 + counter['n']}",
             course_name="Database Management System",
             department_id=department.id,
-            semester=6,
+            study_year=3,
+            semester=2,
             session=session,
             created_by=owner.id,
         )

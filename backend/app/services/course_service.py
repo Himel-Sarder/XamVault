@@ -91,6 +91,7 @@ class CourseService:
                 course_code=code,
                 course_name=data.course_name,
                 department_id=data.department_id,
+                study_year=data.study_year,
                 semester=data.semester,
                 session=data.session,
                 created_by=actor.id,  # from the token, never from the request body

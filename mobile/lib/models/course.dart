@@ -6,6 +6,7 @@ class Course {
     required this.createdBy,
     this.teacherName,
     this.departmentId,
+    this.studyYear,
     this.semester,
     this.session,
     this.isActive = true,
@@ -19,6 +20,11 @@ class Course {
   /// Who runs it. Present so an admin sees the holder without resolving an id.
   final String? teacherName;
   final int? departmentId;
+  /// Year of the programme, 1 to 4. Named studyYear because `session` beside it
+  /// already holds the academic year as "2025-2026".
+  final int? studyYear;
+
+  /// Which half of that year, 1 or 2.
   final int? semester;
   final String? session;
   final bool isActive;
@@ -30,6 +36,7 @@ class Course {
         createdBy: json['created_by'] as int,
         teacherName: json['teacher_name'] as String?,
         departmentId: json['department_id'] as int?,
+        studyYear: json['study_year'] as int?,
         semester: json['semester'] as int?,
         session: json['session'] as String?,
         isActive: json['is_active'] as bool? ?? true,

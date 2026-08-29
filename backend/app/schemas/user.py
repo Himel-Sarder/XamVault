@@ -34,6 +34,7 @@ class UserSummary(ORMModel):
 class StudentProfileResponse(ORMModel):
     student_id: str
     department_id: int | None
+    study_year: int | None
     semester: int | None
     session: str | None
 
@@ -76,7 +77,8 @@ class UserCreate(BaseModel):
 
     # Role-specific profile fields.
     student_id: str | None = Field(default=None, max_length=50)
-    semester: int | None = Field(default=None, ge=1, le=12)
+    study_year: int | None = Field(default=None, ge=1, le=4, description="Year of the programme, 1 to 4.")
+    semester: int | None = Field(default=None, ge=1, le=2, description="Which half of that year, 1 or 2.")
     session: str | None = Field(default=None, max_length=20)
     teacher_id: str | None = Field(default=None, max_length=50)
     designation: str | None = Field(default=None, max_length=100)

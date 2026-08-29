@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/department.dart';
+import 'package:uniexam/models/study_stage.dart';
 import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/admin_provider.dart';
@@ -35,6 +36,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
   final _session = TextEditingController();
 
   int? _departmentId;
+  int? _studyYear;
   int? _semester;
   bool _isActive = true;
   String? _teacherName;
@@ -57,6 +59,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
     _name.text = course.courseName;
     _session.text = course.session ?? '';
     _departmentId = course.departmentId;
+    _studyYear = course.studyYear;
     _semester = course.semester;
     _isActive = course.isActive;
     _teacherName = course.teacherName;
@@ -76,6 +79,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
           widget.courseId!,
           courseName: _name.text.trim(),
           departmentId: _departmentId,
+          studyYear: _studyYear,
           semester: _semester,
           session: session.isEmpty ? null : session,
           isActive: _isActive,
@@ -86,6 +90,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
           courseCode: _code.text.trim(),
           courseName: _name.text.trim(),
           departmentId: _departmentId,
+          studyYear: _studyYear,
           semester: _semester,
           session: session.isEmpty ? null : session,
         );
@@ -196,19 +201,44 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int?>(
-              key: const Key('course_semester'),
-              initialValue: _semester,
-              decoration: const InputDecoration(
-                labelText: 'Semester',
-                prefixIcon: Icon(Icons.calendar_view_month_outlined),
-              ),
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('Not set')),
-                for (var n = 1; n <= 12; n++)
-                  DropdownMenuItem<int?>(value: n, child: Text('Semester $n')),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int?>(
+                    key: const Key('course_year'),
+                    isExpanded: true,
+                    initialValue: _studyYear,
+                    decoration: const InputDecoration(
+                      labelText: 'Year',
+                      prefixIcon: Icon(Icons.school_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Not set')),
+                      for (var n = 1; n <= 4; n++)
+                        DropdownMenuItem<int?>(value: n, child: Text(ordinalYear(n))),
+                    ],
+                    onChanged: (value) => setState(() => _studyYear = value),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<int?>(
+                    key: const Key('course_semester'),
+                    isExpanded: true,
+                    initialValue: _semester,
+                    decoration: const InputDecoration(labelText: 'Semester'),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Not set')),
+                      for (var n = 1; n <= 2; n++)
+                        DropdownMenuItem<int?>(
+                          value: n,
+                          child: Text(ordinalSemester(n)),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _semester = value),
+                  ),
+                ),
               ],
-              onChanged: (value) => setState(() => _semester = value),
             ),
             const SizedBox(height: 16),
             TextFormField(

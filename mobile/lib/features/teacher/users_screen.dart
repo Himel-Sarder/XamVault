@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
+import 'package:uniexam/models/study_stage.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/admin_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
@@ -324,6 +325,8 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
 
   UserRole _role = UserRole.student;
   int? _departmentId;
+  int? _studyYear;
+  int? _semester;
   bool _saving = false;
   String? _error;
 
@@ -345,6 +348,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
     });
     final email = _email.text.trim();
     final profileId = _roleId.text.trim();
+    final isStudentRole = _role == UserRole.student;
     try {
       await ref.read(adminRepositoryProvider).createUser(
             userId: _userId.text.trim(),
@@ -359,6 +363,8 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
             // fill it in means the form breaks against any deployment that has not
             // caught up yet -- which is exactly what happened.
             studentId: _role == UserRole.student ? _userId.text.trim() : null,
+            studyYear: isStudentRole ? _studyYear : null,
+            semester: isStudentRole ? _semester : null,
             teacherId: _role == UserRole.teacher
                 ? (profileId.isEmpty ? null : profileId)
                 : null,
@@ -462,6 +468,54 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
                       labelText: 'Staff ID (optional)',
                       helperText: 'Defaults to the login ID',
                     ),
+                  ),
+                ],
+                if (isStudent) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int?>(
+                          key: const Key('new_user_year'),
+                          isExpanded: true,
+                          initialValue: _studyYear,
+                          decoration: const InputDecoration(labelText: 'Year'),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('Not set'),
+                            ),
+                            for (var n = 1; n <= 4; n++)
+                              DropdownMenuItem<int?>(
+                                value: n,
+                                child: Text(ordinalYear(n)),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() => _studyYear = value),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<int?>(
+                          key: const Key('new_user_semester'),
+                          isExpanded: true,
+                          initialValue: _semester,
+                          decoration: const InputDecoration(labelText: 'Semester'),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('Not set'),
+                            ),
+                            for (var n = 1; n <= 2; n++)
+                              DropdownMenuItem<int?>(
+                                value: n,
+                                child: Text(ordinalSemester(n)),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() => _semester = value),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 12),

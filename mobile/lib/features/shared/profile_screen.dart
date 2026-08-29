@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/models/study_stage.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/widgets/section.dart';
@@ -58,11 +59,18 @@ class ProfileScreen extends ConsumerWidget {
                       value: student.studentId,
                       colour: context.accents.accents[0],
                     ),
-                    if (student.semester != null)
+                    if (studyStage(
+                          year: student.studyYear,
+                          semester: student.semester,
+                        ) !=
+                        null)
                       _Detail(
                         icon: Icons.calendar_view_month_outlined,
-                        label: 'Semester',
-                        value: 'Semester ${student.semester}',
+                        label: 'Stage',
+                        value: studyStage(
+                          year: student.studyYear,
+                          semester: student.semester,
+                        )!,
                         colour: context.accents.accents[3],
                       ),
                     if (student.session != null)

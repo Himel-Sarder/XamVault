@@ -22,7 +22,8 @@ User student() => const User(
       department: Department(id: 1, code: 'CSE', name: 'Computer Science & Engineering'),
       studentProfile: StudentProfile(
         studentId: '20261234',
-        semester: 6,
+        studyYear: 3,
+        semester: 2,
         session: '2025-2026',
       ),
     );
@@ -84,7 +85,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Student ID'), findsOneWidget);
-      expect(find.text('Semester 6'), findsOneWidget);
+      // Written the way the university says it, in one place, so no two screens
+      // disagree about the same student.
+      expect(find.text('3rd Year, 2nd Semester'), findsOneWidget);
       expect(find.text('2025-2026'), findsOneWidget);
       expect(find.text('Teacher ID'), findsNothing);
     });
@@ -96,7 +99,7 @@ void main() {
 
       expect(find.text('Teacher ID'), findsOneWidget);
       expect(find.text('Lecturer'), findsOneWidget);
-      expect(find.text('Semester'), findsNothing);
+      expect(find.text('Stage'), findsNothing);
     });
 
     testWidgets('an account with no profile skips the section entirely',

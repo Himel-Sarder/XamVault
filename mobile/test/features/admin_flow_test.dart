@@ -523,6 +523,43 @@ void main() {
       expect(find.byKey(const Key('new_user_profile_id')), findsOneWidget);
     });
 
+    testWidgets('a student is asked for a year and a half of it', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('new_user')));
+      await tester.pumpAndSettle();
+
+      // Four years and two halves, not one running count of twelve.
+      expect(find.byKey(const Key('new_user_year')), findsOneWidget);
+      expect(find.byKey(const Key('new_user_semester')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('new_user_year')));
+      await tester.pumpAndSettle();
+      expect(find.text('4th Year'), findsWidgets);
+      expect(find.text('5th Year'), findsNothing);
+    });
+
+    testWidgets('a teacher is not asked for either', (tester) async {
+      useTallSurface(tester);
+      final admin = FakeAdminRepository(users: directory());
+      await tester.pumpWidget(wrap(const UsersScreen(), admin: admin));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('new_user')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Teacher')),
+      );
+      await tester.pumpAndSettle();
+
+      // Staff are not in a year of the programme.
+      expect(find.byKey(const Key('new_user_year')), findsNothing);
+      expect(find.byKey(const Key('new_user_semester')), findsNothing);
+    });
+
     testWidgets('the department picker actually lists the departments',
         (tester) async {
       useTallSurface(tester);

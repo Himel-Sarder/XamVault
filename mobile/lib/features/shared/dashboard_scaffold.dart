@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
 import 'package:uniexam/features/shared/notifications_screen.dart';
 import 'package:uniexam/models/course.dart';
+import 'package:uniexam/models/study_stage.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
@@ -125,6 +126,15 @@ class DashboardScaffold extends ConsumerWidget {
   }
 }
 
+/// The year and semester, prefixed for the identity line, or nothing at all.
+String _stageSuffix(User user) {
+  final stage = studyStage(
+    year: user.studentProfile?.studyYear,
+    semester: user.studentProfile?.semester,
+  );
+  return stage == null ? '' : ' · $stage';
+}
+
 /// Shared by all three dashboards.
 class IdentityCard extends ConsumerWidget {
   const IdentityCard({super.key, required this.user});
@@ -137,7 +147,7 @@ class IdentityCard extends ConsumerWidget {
     final subtitle = switch (user.role) {
       UserRole.student =>
         'Student ID ${user.studentProfile?.studentId ?? user.userId}'
-            '${user.studentProfile?.semester != null ? ' · Semester ${user.studentProfile!.semester}' : ''}',
+            '${_stageSuffix(user)}',
       UserRole.teacher =>
         '${user.teacherProfile?.designation ?? 'Teacher'} · ID ${user.teacherProfile?.teacherId ?? user.userId}',
       UserRole.admin => 'Administrator · ID ${user.userId}',

@@ -80,7 +80,11 @@ class StudentProfile(Base):
     __tablename__ = "student_profiles"
     __table_args__ = (
         CheckConstraint(
-            "semester IS NULL OR (semester >= 1 AND semester <= 12)", name="semester"
+            "study_year IS NULL OR (study_year >= 1 AND study_year <= 4)",
+            name="study_year",
+        ),
+        CheckConstraint(
+            "semester IS NULL OR (semester >= 1 AND semester <= 2)", name="semester"
         ),
     )
 
@@ -92,6 +96,14 @@ class StudentProfile(Base):
     department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id", ondelete="SET NULL"), nullable=True
     )
+    #: Year of the programme, 1 to 4.
+    #:
+    #: Named study_year rather than year because ``session`` next to it already holds
+    #: the academic year as "2025-2026", and two fields both called some kind of year
+    #: would be read wrongly at least once. The UI label is simply "Year".
+    study_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    #: Which half of that year, 1 or 2.
     semester: Mapped[int | None] = mapped_column(Integer, nullable=True)
     session: Mapped[str | None] = mapped_column(String(20), nullable=True)
 

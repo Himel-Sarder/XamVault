@@ -15,6 +15,7 @@ def test_admin_can_create_a_student_with_profile(client, api, auth_headers, admi
             "role": "student",
             "department_id": department.id,
             "student_id": "20260001",
+            "study_year": 1,
             "semester": 1,
             "session": "2025-2026",
         },
@@ -22,6 +23,7 @@ def test_admin_can_create_a_student_with_profile(client, api, auth_headers, admi
     assert response.status_code == 201
     body = response.json()
     assert body["role"] == "student"
+    assert body["student_profile"]["study_year"] == 1
     assert body["student_profile"]["semester"] == 1
     assert "password" not in body and "password_hash" not in body
 

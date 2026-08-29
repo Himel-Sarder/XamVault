@@ -46,18 +46,24 @@ class StudentProfile {
   const StudentProfile({
     required this.studentId,
     this.departmentId,
+    this.studyYear,
     this.semester,
     this.session,
   });
 
   final String studentId;
   final int? departmentId;
+  /// Year of the programme, 1 to 4.
+  final int? studyYear;
+
+  /// Which half of that year, 1 or 2.
   final int? semester;
   final String? session;
 
   factory StudentProfile.fromJson(Map<String, dynamic> json) => StudentProfile(
         studentId: json['student_id'] as String,
         departmentId: json['department_id'] as int?,
+        studyYear: json['study_year'] as int?,
         semester: json['semester'] as int?,
         session: json['session'] as String?,
       );

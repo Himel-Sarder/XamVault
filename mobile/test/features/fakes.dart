@@ -147,6 +147,7 @@ class FakeCourseRepository implements CourseRepository {
     required String courseCode,
     required String courseName,
     int? departmentId,
+    int? studyYear,
     int? semester,
     String? session,
   }) async {
@@ -156,6 +157,7 @@ class FakeCourseRepository implements CourseRepository {
       courseName: courseName,
       createdBy: 2,
       departmentId: departmentId,
+      studyYear: studyYear,
       semester: semester,
       session: session,
     );
@@ -169,6 +171,7 @@ class FakeCourseRepository implements CourseRepository {
     int id, {
     String? courseName,
     int? departmentId,
+    int? studyYear,
     int? semester,
     String? session,
     bool? isActive,
@@ -364,6 +367,7 @@ class FakeAdminRepository implements AdminRepository {
     String? email,
     int? departmentId,
     String? studentId,
+    int? studyYear,
     int? semester,
     String? session,
     String? teacherId,

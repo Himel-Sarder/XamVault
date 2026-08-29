@@ -11,7 +11,8 @@ def test_teacher_creates_a_course_and_owns_it(client, api, auth_headers, teacher
             "course_code": "cse-301",
             "course_name": "Database Management System",
             "department_id": department.id,
-            "semester": 6,
+            "study_year": 3,
+            "semester": 2,
             "session": "2025-2026",
         },
     )
@@ -418,3 +419,54 @@ def test_the_course_list_names_who_runs_each_one(
     make_course(teacher)
     page = client.get(f"{api}/courses", headers=auth_headers(admin)).json()
     assert page["items"][0]["teacher_name"] == teacher.name
+
+
+# ------------------------------------------------------- year and semester
+
+
+def test_a_course_is_filed_by_year_and_half(client, api, auth_headers, teacher, department):
+    response = client.post(
+        f"{api}/courses",
+        headers=auth_headers(teacher),
+        json={
+            "course_code": "CSE-405",
+            "course_name": "Compilers",
+            "department_id": department.id,
+            "study_year": 4,
+            "semester": 1,
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["study_year"] == 4
+    assert response.json()["semester"] == 1
+
+
+def test_a_fifth_year_is_refused(client, api, auth_headers, teacher):
+    response = client.post(
+        f"{api}/courses",
+        headers=auth_headers(teacher),
+        json={"course_code": "CSE-501", "course_name": "Ghost", "study_year": 5, "semester": 1},
+    )
+    assert response.status_code == 422
+
+
+def test_a_third_semester_is_refused(client, api, auth_headers, teacher):
+    """The programme has two halves to a year. A third would mean the old running
+    count had crept back in."""
+    response = client.post(
+        f"{api}/courses",
+        headers=auth_headers(teacher),
+        json={"course_code": "CSE-502", "course_name": "Ghost", "study_year": 1, "semester": 3},
+    )
+    assert response.status_code == 422
+
+
+def test_both_stay_optional(client, api, auth_headers, teacher):
+    response = client.post(
+        f"{api}/courses",
+        headers=auth_headers(teacher),
+        json={"course_code": "CSE-601", "course_name": "Unscheduled"},
+    )
+    assert response.status_code == 201
+    assert response.json()["study_year"] is None
+    assert response.json()["semester"] is None

@@ -15,14 +15,16 @@ class CourseCreate(BaseModel):
     course_code: str = Field(min_length=1, max_length=30)
     course_name: str = Field(min_length=1, max_length=200)
     department_id: int | None = None
-    semester: int | None = Field(default=None, ge=1, le=12)
+    study_year: int | None = Field(default=None, ge=1, le=4, description="Year of the programme, 1 to 4.")
+    semester: int | None = Field(default=None, ge=1, le=2, description="Which half of that year, 1 or 2.")
     session: str | None = Field(default=None, max_length=20)
 
 
 class CourseUpdate(BaseModel):
     course_name: str | None = Field(default=None, min_length=1, max_length=200)
     department_id: int | None = None
-    semester: int | None = Field(default=None, ge=1, le=12)
+    study_year: int | None = Field(default=None, ge=1, le=4, description="Year of the programme, 1 to 4.")
+    semester: int | None = Field(default=None, ge=1, le=2, description="Which half of that year, 1 or 2.")
     session: str | None = Field(default=None, max_length=20)
     is_active: bool | None = None
 
@@ -32,6 +34,7 @@ class CourseResponse(ORMModel):
     course_code: str
     course_name: str
     department_id: int | None
+    study_year: int | None
     semester: int | None
     session: str | None
     created_by: int

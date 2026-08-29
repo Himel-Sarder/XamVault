@@ -69,7 +69,8 @@ class UserService:
                     user_id=user.id,
                     student_id=data.student_id,
                     department_id=data.department_id,
-                    semester=data.semester,
+                    study_year=data.study_year,
+                semester=data.semester,
                     session=data.session,
                 )
             )
