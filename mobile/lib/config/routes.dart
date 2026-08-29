@@ -54,6 +54,7 @@ class Routes {
   static const adminHome = '/admin';
   static const adminDepartments = '/admin/departments';
   static const adminUsers = '/admin/users';
+  static const adminSettings = '/admin/settings';
   static const adminCourses = '/admin/courses';
   static const adminCourseCreate = '/admin/courses/new';
 

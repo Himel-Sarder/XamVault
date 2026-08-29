@@ -28,6 +28,12 @@ class AdminDashboardScreen extends StatelessWidget {
           onPressed: () => context.push(Routes.adminDepartments),
           icon: const Icon(Icons.apartment_outlined),
         ),
+        IconButton(
+          key: const Key('admin_settings'),
+          tooltip: 'Settings',
+          onPressed: () => context.push(Routes.adminSettings),
+          icon: const Icon(Icons.settings_outlined),
+        ),
       ],
     );
   }

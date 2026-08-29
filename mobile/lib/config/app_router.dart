@@ -19,6 +19,7 @@ import 'package:uniexam/features/teacher/course_detail_screen.dart';
 import 'package:uniexam/features/teacher/course_form_screen.dart';
 import 'package:uniexam/features/teacher/departments_screen.dart';
 import 'package:uniexam/features/teacher/enrollments_screen.dart';
+import 'package:uniexam/features/teacher/settings_screen.dart';
 import 'package:uniexam/features/teacher/users_screen.dart';
 import 'package:uniexam/features/teacher/exam_activity_screen.dart';
 import 'package:uniexam/features/teacher/exam_detail_screen.dart';
@@ -214,6 +215,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'departments', builder: (_, _) => const DepartmentsScreen()),
           GoRoute(path: 'users', builder: (_, _) => const UsersScreen()),
+          GoRoute(path: 'settings', builder: (_, _) => const SettingsScreen()),
           GoRoute(
             path: 'courses',
             builder: (_, _) => const CoursesScreen(title: 'All Courses'),

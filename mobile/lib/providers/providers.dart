@@ -11,6 +11,7 @@ import 'package:uniexam/repositories/department_repository.dart';
 import 'package:uniexam/repositories/exam_repository.dart';
 import 'package:uniexam/repositories/notification_repository.dart';
 import 'package:uniexam/repositories/question_bank_repository.dart';
+import 'package:uniexam/repositories/settings_repository.dart';
 import 'package:uniexam/repositories/student_repository.dart';
 
 /// Overridden in tests with [InMemoryTokenStore].
@@ -66,4 +67,8 @@ final departmentRepositoryProvider = Provider<DepartmentRepository>(
 
 final adminRepositoryProvider = Provider<AdminRepository>(
   (ref) => AdminRepository(ref.watch(apiClientProvider)),
+);
+
+final settingsRepositoryProvider = Provider<SettingsRepository>(
+  (ref) => SettingsRepository(ref.watch(apiClientProvider)),
 );

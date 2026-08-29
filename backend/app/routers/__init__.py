@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.core.config import settings
 from app.routers import (
+    app_settings,
     attempts,
     grading,
     auth,
@@ -35,5 +36,6 @@ api_router.include_router(question_bank.router)
 api_router.include_router(notifications.router)
 api_router.include_router(results.router)
 api_router.include_router(reports.router)
+api_router.include_router(app_settings.router)
 
 __all__ = ["api_router"]
