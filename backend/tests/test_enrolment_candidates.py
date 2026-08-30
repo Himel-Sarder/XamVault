@@ -155,3 +155,25 @@ def test_the_whole_cohort_can_then_be_enrolled_at_once(
         client, api, auth_headers, teacher, teacher_course, study_year=4, semester=1
     ).json()
     assert after["items"] == []
+
+
+def test_a_student_with_no_department_is_still_offered(
+    client, api, auth_headers, teacher, teacher_course, cohort, db
+):
+    """Narrowing by department is a convenience, not a rule.
+
+    Deleting the departments set every student's to null, and the filter then hid all
+    of them -- for a reason that had nothing to do with the year the teacher picked.
+    """
+    from app.models.user import StudentProfile, User
+
+    for student in cohort:
+        db.query(StudentProfile).filter_by(user_id=student.id).one().department_id = None
+        db.get(User, student.id).department_id = None
+    db.commit()
+
+    body = _candidates(
+        client, api, auth_headers, teacher, teacher_course, study_year=4, semester=1
+    ).json()
+
+    assert len(body["items"]) == 5, "unassigned students must still be addable"

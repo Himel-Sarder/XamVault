@@ -111,11 +111,21 @@ class UserRepository:
         if department_id is not None:
             # The profile's department, falling back to the account's, because a
             # student created before departments were on the profile has only the one.
+            #
+            # A student with no department at all is still offered. Narrowing to the
+            # course's department is a convenience, not a rule, and excluding the
+            # unassigned makes them invisible for a reason that has nothing to do with
+            # the year the teacher picked -- which is exactly what happened when the
+            # departments were deleted and every student's became null.
             stmt = stmt.where(
                 (StudentProfile.department_id == department_id)
                 | (
                     StudentProfile.department_id.is_(None)
                     & (User.department_id == department_id)
+                )
+                | (
+                    StudentProfile.department_id.is_(None)
+                    & User.department_id.is_(None)
                 )
             )
         if search:
