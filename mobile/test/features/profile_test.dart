@@ -37,6 +37,13 @@ User teacher() => const User(
       teacherProfile: TeacherProfile(teacherId: 'T1001', designation: 'Lecturer'),
     );
 
+User admin() => const User(
+      id: 1,
+      userId: 'admin',
+      name: 'System Administrator',
+      role: UserRole.admin,
+    );
+
 /// Holds one signed-in user, so the screen can be pumped without a login round trip.
 class _SignedIn extends AuthNotifier {
   _SignedIn(this.user);
@@ -148,6 +155,62 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Signs you out on every other device'), findsOneWidget);
+    });
+  });
+
+  group('the developer info', () {
+    testWidgets('an icon on the profile reveals who wrote it', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrap(student()));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('developer_info')), findsOneWidget);
+      // Behind the icon, not on the screen: it should not take room from the account.
+      expect(find.text('Himel Sarder'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('developer_info')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Himel Sarder'), findsOneWidget);
+      expect(find.textContaining('2021-22'), findsOneWidget);
+      expect(find.textContaining('CSE'), findsWidgets);
+      expect(find.text('01911884114'), findsOneWidget);
+    });
+
+    testWidgets('a teacher sees the same thing', (tester) async {
+      // The answer does not depend on who is asking.
+      tall(tester);
+      await tester.pumpWidget(wrap(teacher()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('developer_info')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Himel Sarder'), findsOneWidget);
+    });
+
+    testWidgets('and so does an admin', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrap(admin()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('developer_info')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('01911884114'), findsOneWidget);
+    });
+
+    testWidgets('it closes again', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrap(student()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('developer_info')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('developer_info_dialog')), findsNothing);
     });
   });
 }

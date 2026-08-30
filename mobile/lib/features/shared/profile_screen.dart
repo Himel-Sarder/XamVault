@@ -6,6 +6,7 @@ import 'package:uniexam/config/theme.dart';
 import 'package:uniexam/models/study_stage.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
+import 'package:uniexam/widgets/brand_mark.dart';
 import 'package:uniexam/widgets/section.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
@@ -27,7 +28,20 @@ class ProfileScreen extends ConsumerWidget {
     final teacher = user.teacherProfile;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+            key: const Key('developer_info'),
+            tooltip: 'About the developer',
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const DeveloperInfoDialog(),
+            ),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
@@ -425,6 +439,127 @@ class _ActionTile extends StatelessWidget {
             Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Who wrote this.
+///
+/// Behind an icon rather than on the screen itself: it is worth being able to find,
+/// and worth not taking room from the account it sits beside. The same for every role,
+/// because the answer does not depend on who is asking.
+class DeveloperInfoDialog extends StatelessWidget {
+  const DeveloperInfoDialog({super.key});
+
+  static const _name = 'Himel Sarder';
+  static const _session = 'Session 2021-22, Dept of CSE, JSTU';
+  static const _mobile = '01911884114';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      key: const Key('developer_info_dialog'),
+      contentPadding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+              decoration: BoxDecoration(
+                gradient: BrandColours.field,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  const BrandLogo(size: 60),
+                  const SizedBox(height: 14),
+                  Text(
+                    _name,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Developer',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: Colors.white70,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const _InfoRow(
+              icon: Icons.school_outlined,
+              label: 'Session and department',
+              value: _session,
+            ),
+            const _InfoRow(
+              icon: Icons.phone_outlined,
+              label: 'Mobile',
+              value: _mobile,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                SelectableText(
+                  value,
+                  style: theme.textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
