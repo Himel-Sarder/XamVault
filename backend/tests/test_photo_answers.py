@@ -300,3 +300,73 @@ def test_the_student_sees_the_mark_once_it_is_released(
     mine = client.get(f"{api}/results", headers=headers)
     assert mine.status_code == 200, mine.text
     assert float(mine.json()[0]["total_score"]) == 9.0
+
+
+def test_a_photo_and_a_code_question_both_count(
+    client, api, auth_headers, teacher, teacher_course, student, enroll,
+    make_exam, make_join_request,
+):
+    """One mark for a photograph, four of five for code, and the total is five.
+
+    The shape a teacher actually set: two questions of different kinds on one paper,
+    marked one after the other. A per-type aggregation can pass a single-question test
+    and still drop one of two.
+    """
+    enroll(teacher_course, student)
+    exam = make_exam(
+        teacher, teacher_course, start_at=datetime.now(UTC) - timedelta(minutes=1)
+    )
+    headers = auth_headers(teacher)
+    for payload in (
+        {"type": "PHOTO_ANSWER", "question_text": "Photograph your working.", "marks": 1},
+        {
+            "type": "CODE_ANSWER",
+            "question_text": "Write the function.",
+            "marks": 5,
+            "language": "python",
+        },
+    ):
+        created = client.post(
+            f"{api}/exams/{exam.id}/questions", headers=headers, json=payload
+        )
+        assert created.status_code == 201, created.text
+    assert client.post(f"{api}/exams/{exam.id}/publish", headers=headers).status_code == 200
+
+    make_join_request(exam, student, status="approved")
+    student_headers = auth_headers(student)
+    started = client.post(f"{api}/exams/{exam.id}/start", headers=student_headers)
+    assert started.status_code == 200, started.text
+    attempt = started.json()
+    assert attempt["total_marks"] == 6
+
+    by_type = {q["type"]: q["exam_question_id"] for q in attempt["questions"]}
+    assert _add_photo(
+        client, api, student_headers, attempt["id"], by_type["PHOTO_ANSWER"]
+    ).status_code == 201
+    saved = client.post(
+        f"{api}/attempts/{attempt['id']}/answers",
+        headers=student_headers,
+        json={
+            "exam_question_id": by_type["CODE_ANSWER"],
+            "answer_text": "def f(): pass",
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert client.post(
+        f"{api}/attempts/{attempt['id']}/submit", headers=student_headers
+    ).status_code == 200
+
+    queue = client.get(f"{api}/attempts/{attempt['id']}/grading", headers=headers).json()
+    awarded = {"PHOTO_ANSWER": 1, "CODE_ANSWER": 4}
+    # Code first, then the photograph -- the order the marks were actually entered.
+    for wanted in ("CODE_ANSWER", "PHOTO_ANSWER"):
+        entry = next(a for a in queue["answers"] if a["type"] == wanted)
+        marked = client.post(
+            f"{api}/attempts/{attempt['id']}/answers/{entry['answer_id']}/evaluate",
+            headers=headers,
+            json={"marks_awarded": awarded[wanted]},
+        )
+        assert marked.status_code == 200, marked.text
+
+    row = client.get(f"{api}/exams/{exam.id}/results", headers=headers).json()[0]
+    assert float(row["total_score"]) == 5.0, "1 for the photograph plus 4 for the code"
