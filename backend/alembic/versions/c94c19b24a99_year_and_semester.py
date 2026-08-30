@@ -68,13 +68,31 @@ def upgrade() -> None:
     # Anything past 8 is clamped to the final year rather than dropped: an out-of-range
     # value is somebody's record, and losing it silently to satisfy a new constraint
     # would be worse than pinning it somewhere defensible.
+    #
+    # Both expressions read the row's *old* semester, which is what SQL guarantees for
+    # every assignment in one UPDATE.
+    #
+    # Written in CASE and integer division rather than the obvious functions, because
+    # this has to run on PostgreSQL in production and on SQLite under the tests, and
+    # the obvious functions are not the same on both:
+    #
+    #   * two-argument MIN is a scalar function in SQLite and an aggregate in
+    #     PostgreSQL, whose scalar spelling is LEAST -- which SQLite does not have;
+    #   * MOD() is PostgreSQL-only, and a literal % has to survive SQLAlchemy's
+    #     parameter escaping on the way to the driver.
+    #
+    # An earlier version used MIN and failed the deploy on PostgreSQL 18 after passing
+    # every test on SQLite, which is the whole argument for writing it this way.
     for table in _TABLES:
         op.execute(
             sa.text(
                 f"""
                 UPDATE {table}
-                   SET study_year = MIN((semester + 1) / 2, 4),
-                       semester   = ((semester - 1) % 2) + 1
+                   SET study_year = CASE
+                                      WHEN (semester + 1) / 2 > 4 THEN 4
+                                      ELSE (semester + 1) / 2
+                                    END,
+                       semester   = semester - 2 * ((semester - 1) / 2)
                  WHERE semester IS NOT NULL
                 """
             )
