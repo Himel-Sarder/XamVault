@@ -174,7 +174,8 @@ void main() {
       expect(find.text('Himel Sarder'), findsOneWidget);
       expect(find.textContaining('2021-22'), findsOneWidget);
       expect(find.textContaining('CSE'), findsWidgets);
-      expect(find.text('01911884114'), findsOneWidget);
+      // No contact number: the card names the author, it is not a way to reach them.
+      expect(find.textContaining('019'), findsNothing);
     });
 
     testWidgets('a teacher sees the same thing', (tester) async {
@@ -197,7 +198,7 @@ void main() {
       await tester.tap(find.byKey(const Key('developer_info')));
       await tester.pumpAndSettle();
 
-      expect(find.text('01911884114'), findsOneWidget);
+      expect(find.text('Himel Sarder'), findsOneWidget);
     });
 
     testWidgets('it closes again', (tester) async {

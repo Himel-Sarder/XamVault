@@ -454,7 +454,6 @@ class DeveloperInfoDialog extends StatelessWidget {
 
   static const _name = 'Himel Sarder';
   static const _session = 'Session 2021-22, Dept of CSE, JSTU';
-  static const _mobile = '01911884114';
 
   @override
   Widget build(BuildContext context) {
@@ -502,11 +501,6 @@ class DeveloperInfoDialog extends StatelessWidget {
               icon: Icons.school_outlined,
               label: 'Session and department',
               value: _session,
-            ),
-            const _InfoRow(
-              icon: Icons.phone_outlined,
-              label: 'Mobile',
-              value: _mobile,
             ),
           ],
         ),

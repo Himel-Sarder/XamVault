@@ -131,6 +131,12 @@ val stripDevPluginRegistrations = tasks.register("stripDevPluginRegistrations") 
     }
 }
 
-tasks.matching { it.name.matches(Regex("compile.*ReleaseJavaWithJavac")) }.configureEach {
-    dependsOn(stripDevPluginRegistrations)
+// withType, not tasks.matching: the Java compile tasks are created by the Android
+// plugin during variant configuration, which happens after this file is evaluated.
+// A matching{} filter set up here does not reliably see them, and the strip silently
+// never runs -- which looks exactly like the task being broken when it is not.
+tasks.withType(JavaCompile::class.java).configureEach {
+    if (name.contains("Release")) {
+        dependsOn(stripDevPluginRegistrations)
+    }
 }
