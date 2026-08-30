@@ -59,7 +59,7 @@ class AttemptQuestion {
   final int? selectedOptionId;
   final String? answerText;
 
-  /// Photographs of work on paper, for PHOTO_ANSWER questions.
+  /// Photographs recorded while photograph questions existed.
   final List<String> answerImageUrls;
 
   /// CODE_ANSWER only: shown beside the editor so the rules are visible.
@@ -69,7 +69,6 @@ class AttemptQuestion {
 
   bool get isChoice => options.isNotEmpty;
   bool get isCode => type == 'CODE_ANSWER';
-  bool get isPhoto => type == 'PHOTO_ANSWER';
   bool get hasImageStem => questionImageUrl != null && questionImageUrl!.isNotEmpty;
 
   bool get isAnswered =>

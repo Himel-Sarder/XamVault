@@ -183,7 +183,10 @@ class _AnswerMarkingCardState extends ConsumerState<AnswerMarkingCard> {
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     )
-                  : answer.isPhoto
+                  // Driven by what the answer actually holds rather than by its type.
+                  // Photograph questions are withdrawn, but an answer recorded while
+                  // they existed still has to be markable.
+                  : answer.answerImageUrls.isNotEmpty
                       // Tap to open full screen: a thumbnail cannot show whether the
                       // handwriting is legible, which is the whole question here.
                       ? _Photographs(urls: answer.answerImageUrls)

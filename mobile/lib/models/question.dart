@@ -5,10 +5,7 @@ enum QuestionType {
   imageTextOptions('IMAGE_TEXT_OPTIONS', 'Image with text options'),
   imageImageOptions('IMAGE_IMAGE_OPTIONS', 'Image with image options'),
   shortAnswer('SHORT_ANSWER', 'Short answer'),
-  codeAnswer('CODE_ANSWER', 'Code'),
-
-  /// The student works on paper and photographs it.
-  photoAnswer('PHOTO_ANSWER', 'Photo of written work');
+  codeAnswer('CODE_ANSWER', 'Code');
 
   const QuestionType(this.wire, this.label);
 

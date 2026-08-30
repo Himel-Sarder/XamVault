@@ -15,7 +15,6 @@ import pytest
 
 from app.models.result import Result
 from app.utils.recompute_results import recompute_results
-from tests.conftest import png_bytes
 
 
 @pytest.fixture
@@ -23,10 +22,10 @@ def marked_exam(
     client, api, auth_headers, teacher, teacher_course, student, enroll,
     make_exam, make_join_request, db,
 ):
-    """A photo question worth 1 and a code question worth 5, both sat and both marked.
+    """A short answer worth 1 and a code question worth 5, both sat and both marked.
 
-    The shape that exposed the bug: a paper of two kinds, where one kind was dropped
-    from the total and the other was not.
+    The shape that exposed the bug: a paper of two kinds marked by hand, where one kind
+    was dropped from the total and the other was not.
     """
     enroll(teacher_course, student)
     exam = make_exam(
@@ -34,7 +33,7 @@ def marked_exam(
     )
     headers = auth_headers(teacher)
     for payload in (
-        {"type": "PHOTO_ANSWER", "question_text": "Photograph your working.", "marks": 1},
+        {"type": "SHORT_ANSWER", "question_text": "Explain your working.", "marks": 1},
         {"type": "CODE_ANSWER", "question_text": "Write it.", "marks": 5,
          "language": "python"},
     ):
@@ -50,9 +49,9 @@ def marked_exam(
     by_type = {q["type"]: q["exam_question_id"] for q in attempt["questions"]}
 
     client.post(
-        f"{api}/attempts/{attempt['id']}/answers/{by_type['PHOTO_ANSWER']}/photos",
+        f"{api}/attempts/{attempt['id']}/answers",
         headers=student_headers,
-        files={"file": ("page.png", png_bytes(), "image/png")},
+        json={"exam_question_id": by_type["SHORT_ANSWER"], "answer_text": "Because."},
     )
     client.post(
         f"{api}/attempts/{attempt['id']}/answers",
@@ -62,7 +61,7 @@ def marked_exam(
     client.post(f"{api}/attempts/{attempt['id']}/submit", headers=student_headers)
 
     queue = client.get(f"{api}/attempts/{attempt['id']}/grading", headers=headers).json()
-    for wanted, marks in (("CODE_ANSWER", 4), ("PHOTO_ANSWER", 1)):
+    for wanted, marks in (("CODE_ANSWER", 4), ("SHORT_ANSWER", 1)):
         entry = next(a for a in queue["answers"] if a["type"] == wanted)
         client.post(
             f"{api}/attempts/{attempt['id']}/answers/{entry['answer_id']}/evaluate",
@@ -77,7 +76,7 @@ def marked_exam(
 
 
 def _as_the_old_code_wrote_it(db, result_id: int) -> None:
-    """The photograph's mark added to nothing: total 4 instead of 5."""
+    """One manual mark added to nothing: total 4 instead of 5."""
     result = db.get(Result, result_id)
     result.short_answer_score = Decimal("0")
     result.total_score = Decimal("4")

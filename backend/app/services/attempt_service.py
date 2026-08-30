@@ -33,8 +33,6 @@ from app.models.attempt import ExamAttempt, StudentAnswer
 from app.models.enums import (
     CHOICE_QUESTION_TYPES,
     MANUAL_QUESTION_TYPES,
-    MAX_ANSWER_PHOTOS,
-    PHOTO_QUESTION_TYPES,
     AnswerStatus,
     AttemptStatus,
     ExamStatus,
@@ -305,12 +303,6 @@ class AttemptService:
                 allowed = attempt.option_orders.get(str(exam_question_id), [])
                 if selected_option_id not in allowed:
                     raise InvalidRequestError("That option does not belong to this question")
-        elif question_type in PHOTO_QUESTION_TYPES:
-            if selected_option_id is not None or answer_text:
-                raise InvalidRequestError(
-                    "This question is answered by photographing your work",
-                    code="photo_question",
-                )
         else:
             if selected_option_id is not None:
                 raise InvalidRequestError("This question is answered in writing")
@@ -337,94 +329,6 @@ class AttemptService:
         return attempt, answer
 
     # ----------------------------------------------------------- photographs
-
-    def _open_photo_answer(
-        self, attempt_id: int, student: User, exam_question_id: int
-    ) -> tuple[ExamAttempt, StudentAnswer]:
-        """The checks every photograph operation shares.
-
-        Uploading is answering, so it is gated exactly as answering is: your own
-        attempt, still open, still inside the time, and a question of the right type.
-        """
-        attempt = self.get(attempt_id, student)
-        if not attempt.is_active:
-            raise ConflictError(
-                "This attempt has been submitted and can no longer be changed",
-                code="attempt_closed",
-            )
-        if exam_question_id not in attempt.question_order:
-            raise NotFoundError("That question is not part of this attempt")
-        if self._question_type(attempt, exam_question_id) not in PHOTO_QUESTION_TYPES:
-            raise InvalidRequestError(
-                "This question is not answered with photographs", code="not_a_photo_question"
-            )
-
-        answer = self.attempts.get_answer(attempt.id, exam_question_id)
-        if answer is None:
-            answer = self.attempts.add_answer(
-                StudentAnswer(
-                    attempt_id=attempt.id,
-                    exam_question_id=exam_question_id,
-                    status=AnswerStatus.PENDING.value,
-                    answer_image_urls=[],
-                )
-            )
-        return attempt, answer
-
-    async def add_photo(
-        self,
-        attempt_id: int,
-        student: User,
-        *,
-        exam_question_id: int,
-        upload: UploadFile,
-    ) -> tuple[ExamAttempt, StudentAnswer]:
-        """Stores one photograph against an answer.
-
-        The cap is enforced here rather than only on the button, because a cap that
-        lives in the UI is a suggestion. Counted before the file is stored, so a
-        rejected upload leaves nothing behind.
-        """
-        attempt, answer = self._open_photo_answer(attempt_id, student, exam_question_id)
-
-        existing = list(answer.answer_image_urls or [])
-        if len(existing) >= MAX_ANSWER_PHOTOS:
-            raise ConflictError(
-                f"A question takes at most {MAX_ANSWER_PHOTOS} photographs. "
-                "Remove one before adding another.",
-                code="photo_limit_reached",
-            )
-
-        stored = await UploadService(self.db).save_image(upload, student)
-        answer.answer_image_urls = existing + [stored.url]
-        answer.updated_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(attempt, ["answers"])
-        return attempt, answer
-
-    def remove_photo(
-        self, attempt_id: int, student: User, *, exam_question_id: int, url: str
-    ) -> tuple[ExamAttempt, StudentAnswer]:
-        """Drops one photograph from an answer, and the stored bytes with it."""
-        attempt, answer = self._open_photo_answer(attempt_id, student, exam_question_id)
-
-        existing = list(answer.answer_image_urls or [])
-        if url not in existing:
-            raise NotFoundError("That photograph is not part of this answer")
-
-        answer.answer_image_urls = [item for item in existing if item != url]
-        answer.updated_at = datetime.now(UTC)
-        self.db.commit()
-
-        # The reference is gone either way; the bytes are a tidy-up. A failure here
-        # must not undo the removal the student asked for.
-        try:
-            UploadService(self.db).delete(url.rsplit("/", 1)[-1], student)
-        except (NotFoundError, ConflictError, PermissionDeniedError):
-            pass
-
-        self.db.refresh(attempt, ["answers"])
-        return attempt, answer
 
     def _question_type(self, attempt: ExamAttempt, exam_question_id: int) -> str:
         link = self.exams.get_exam_question(attempt.exam_id, exam_question_id)
@@ -557,9 +461,9 @@ class AttemptService:
                 # photograph of work done on paper -- counts as written.
                 #
                 # An else rather than one more elif. The chain used to name each type
-                # it accepted, so PHOTO_ANSWER, added to the manually marked types
-                # later, matched none of them: a teacher could award marks, see them
-                # stored against the answer, and watch the total stay at zero. A type
+                # it accepted, so a manually marked type added later matched none of
+                # them: a teacher could award marks, see them stored against the
+                # answer, and watch the total stay at zero. A type
                 # this code has not heard of must land somewhere, not nowhere.
                 totals["short"] += awarded
 

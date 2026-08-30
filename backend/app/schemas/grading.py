@@ -25,14 +25,13 @@ class AnswerToMark(BaseModel):
     answer_id: int | None
     exam_question_id: int
     position: int
-    type: Literal["SHORT_ANSWER", "CODE_ANSWER", "PHOTO_ANSWER"]
+    type: Literal["SHORT_ANSWER", "CODE_ANSWER"]
     question_text: str
     language: str | None
     max_marks: int
     answer_text: str | None
 
-    #: Photographs of work on paper, for PHOTO_ANSWER. The marker reads these instead
-    #: of answer_text, which is empty for that type.
+    #: Kept for answers recorded while photograph questions existed.
     answer_image_urls: list[str] = Field(default_factory=list)
     marks_awarded: float | None
     feedback: str | None

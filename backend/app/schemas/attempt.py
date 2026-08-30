@@ -38,7 +38,7 @@ class AttemptQuestionResponse(BaseModel):
     )
     answer_image_urls: list[str] = Field(
         default_factory=list,
-        description="Photographs of work on paper, for PHOTO_ANSWER questions.",
+        description="Photographs recorded while photograph questions existed.",
     )
 
     # CODE_ANSWER only: shown beside the editor so the rules are visible.

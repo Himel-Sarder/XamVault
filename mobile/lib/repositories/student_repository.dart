@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:uniexam/core/api_client.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/attempt.dart';
@@ -128,36 +127,6 @@ class StudentRepository {
     return ExamResult.fromJson(data);
   }
 
-  /// Adds one photograph of work done on paper.
-  ///
-  /// The three-photograph cap is the server's, and this reports whatever it says the
-  /// answer now holds rather than assuming the upload landed.
-  Future<AnswerAck> addAnswerPhoto(
-    int attemptId, {
-    required int examQuestionId,
-    required List<int> bytes,
-    required String filename,
-  }) async {
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(bytes, filename: filename),
-    });
-    final data = await _api.post<Map<String, dynamic>>(
-      '/attempts/$attemptId/answers/$examQuestionId/photos',
-      data: form,
-    );
-    return AnswerAck.fromJson(data);
-  }
-
-  Future<AnswerAck> removeAnswerPhoto(
-    int attemptId, {
-    required int examQuestionId,
-    required String url,
-  }) async {
-    final data = await _api.deleteWithResult<Map<String, dynamic>>(
-      '/attempts/$attemptId/answers/$examQuestionId/photos?url=$url',
-    );
-    return AnswerAck.fromJson(data);
-  }
 }
 
 /// What the server confirms after saving one answer.

@@ -180,14 +180,13 @@ class AnswerToMark {
   final String? language;
   final String? answerText;
 
-  /// Photographs of work on paper, for PHOTO_ANSWER. The marker reads these
+  /// Photographs recorded while photograph questions existed. The marker reads these
   /// instead of answerText, which is empty for that type.
   final List<String> answerImageUrls;
   final double? marksAwarded;
   final String? feedback;
 
   bool get isCode => type == 'CODE_ANSWER';
-  bool get isPhoto => type == 'PHOTO_ANSWER';
   bool get isMarked => status == 'evaluated';
   bool get wasAnswered =>
       (answerText != null && answerText!.trim().isNotEmpty) ||

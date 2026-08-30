@@ -104,11 +104,6 @@ class QuestionType(StrEnum):
     SHORT_ANSWER = "SHORT_ANSWER"
     CODE_ANSWER = "CODE_ANSWER"
 
-    #: The student works on paper and photographs it. For anything a keyboard is the
-    #: wrong tool for -- a derivation, a circuit, a proof -- where typing the answer
-    #: would test transcription rather than the subject.
-    PHOTO_ANSWER = "PHOTO_ANSWER"
-
 
 ROLE_VALUES: tuple[str, ...] = tuple(role.value for role in UserRole)
 JOIN_REQUEST_STATUS_VALUES: tuple[str, ...] = tuple(s.value for s in JoinRequestStatus)
@@ -137,8 +132,6 @@ MANUAL_QUESTION_TYPES: frozenset[str] = frozenset(
     {
         QuestionType.SHORT_ANSWER.value,
         QuestionType.CODE_ANSWER.value,
-        # Nothing can mark a photograph of handwriting but a person.
-        QuestionType.PHOTO_ANSWER.value,
     }
 )
 
@@ -191,10 +184,7 @@ OPEN_ATTEMPT_STATUSES: frozenset[str] = frozenset({AttemptStatus.ACTIVE.value})
 EDITABLE_EXAM_STATUSES: frozenset[str] = frozenset({ExamStatus.DRAFT.value})
 
 #: Types answered by photographing work done on paper.
-PHOTO_QUESTION_TYPES: frozenset[str] = frozenset({QuestionType.PHOTO_ANSWER.value})
 
 #: How many photographs one answer may hold.
 #:
 #: Three covers a page and its overflow without becoming an upload channel. Enforced by
-#: the server, not only by the button: a cap that lives in the UI is a suggestion.
-MAX_ANSWER_PHOTOS = 3

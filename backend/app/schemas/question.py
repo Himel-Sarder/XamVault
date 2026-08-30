@@ -19,7 +19,6 @@ QuestionTypeLiteral = Literal[
     "IMAGE_IMAGE_OPTIONS",
     "SHORT_ANSWER",
     "CODE_ANSWER",
-    "PHOTO_ANSWER",
 ]
 
 MIN_OPTIONS = 2

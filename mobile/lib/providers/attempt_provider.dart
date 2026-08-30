@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
@@ -8,7 +7,6 @@ import 'package:uniexam/models/attempt.dart';
 import 'package:uniexam/models/security_summary.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/providers/student_provider.dart';
-import 'package:uniexam/repositories/student_repository.dart';
 
 /// Everything the exam screen renders.
 class AttemptView {
@@ -17,7 +15,6 @@ class AttemptView {
     required this.remainingSeconds,
     required this.index,
     this.savingQuestionId,
-    this.capturingQuestionId,
     this.submitting = false,
     this.outcome,
     this.error,
@@ -33,7 +30,6 @@ class AttemptView {
   final int? savingQuestionId;
 
   /// The question whose photograph is being uploaded, if any.
-  final int? capturingQuestionId;
   final bool submitting;
   final SubmitOutcome? outcome;
   final String? error;
@@ -53,8 +49,6 @@ class AttemptView {
     int? index,
     int? savingQuestionId,
     bool clearSaving = false,
-    int? capturingQuestionId,
-    bool clearCapturing = false,
     bool? submitting,
     SubmitOutcome? outcome,
     String? error,
@@ -66,8 +60,6 @@ class AttemptView {
       remainingSeconds: remainingSeconds ?? this.remainingSeconds,
       index: index ?? this.index,
       savingQuestionId: clearSaving ? null : (savingQuestionId ?? this.savingQuestionId),
-      capturingQuestionId:
-          clearCapturing ? null : (capturingQuestionId ?? this.capturingQuestionId),
       submitting: submitting ?? this.submitting,
       outcome: outcome ?? this.outcome,
       error: clearError ? null : (error ?? this.error),
@@ -297,99 +289,6 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
       // The optimistic edit is rolled back by re-reading the server's own state.
       await _reload(error.message);
     }
-  }
-
-  /// The cap the button enforces. The server enforces its own, and that one is the
-  /// real limit — this exists so the button can explain itself before being tapped.
-  static const int maxAnswerPhotos = 3;
-
-  /// Stores a photograph the student has just taken, and uploads it.
-  ///
-  /// The capture itself happens in the exam's own screen rather than in the system
-  /// camera. The obvious implementation launched the camera app, and it could not
-  /// work: the exam is pinned to the screen, Android will not bring another app
-  /// forward while it is, and releasing the pin to allow it is what put the phone on
-  /// its lock screen -- pinning asks for the PIN before it lets go.
-  ///
-  /// So the bytes arrive already captured. Nothing is unpinned and the student never
-  /// leaves the paper.
-  Future<void> uploadPhoto(
-    int examQuestionId, {
-    required Uint8List bytes,
-    required String filename,
-  }) async {
-    final view = state.valueOrNull;
-    if (view == null || view.isFinished || view.capturingQuestionId != null) return;
-
-    state = AsyncData(view.copyWith(
-      capturingQuestionId: examQuestionId,
-      clearError: true,
-    ));
-    try {
-      final ack = await ref.read(studentRepositoryProvider).addAnswerPhoto(
-            arg,
-            examQuestionId: examQuestionId,
-            bytes: bytes,
-            filename: filename,
-          );
-      _applyPhotos(examQuestionId, ack);
-    } on ApiException catch (error) {
-      final current = state.valueOrNull;
-      if (current != null) {
-        state = AsyncData(current.copyWith(
-          error: error.message,
-          clearCapturing: true,
-        ));
-      }
-    }
-  }
-
-  Future<void> removePhoto(int examQuestionId, String url) async {
-    final view = state.valueOrNull;
-    if (view == null || view.isFinished) return;
-
-    state = AsyncData(view.copyWith(
-      capturingQuestionId: examQuestionId,
-      clearError: true,
-    ));
-    try {
-      final ack = await ref.read(studentRepositoryProvider).removeAnswerPhoto(
-            arg,
-            examQuestionId: examQuestionId,
-            url: url,
-          );
-      _applyPhotos(examQuestionId, ack);
-    } on ApiException catch (error) {
-      final current = state.valueOrNull;
-      if (current != null) {
-        state = AsyncData(current.copyWith(
-          error: error.message,
-          clearCapturing: true,
-        ));
-      }
-    }
-  }
-
-  /// Takes the server's list rather than the client's guess, so a refused upload
-  /// cannot leave a photograph on screen that was never stored.
-  void _applyPhotos(int examQuestionId, AnswerAck ack) {
-    final current = state.valueOrNull;
-    if (current == null) return;
-
-    final updated = current.attempt.questions
-        .map((item) => item.examQuestionId == examQuestionId
-            ? item.copyWith(answerImageUrls: ack.answerImageUrls)
-            : item)
-        .toList(growable: false);
-
-    state = AsyncData(current.copyWith(
-      attempt: current.attempt.copyWith(
-        questions: updated,
-        answeredCount: ack.answeredCount,
-      ),
-      remainingSeconds: ack.remainingSeconds,
-      clearCapturing: true,
-    ));
   }
 
   Future<void> submit({bool auto = false}) async {

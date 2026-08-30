@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/features/teacher/widgets/image_field.dart';
-import 'package:uniexam/config/theme.dart';
-import 'package:uniexam/providers/attempt_provider.dart';
 import 'package:uniexam/models/question.dart';
 import 'package:uniexam/providers/exam_provider.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -234,36 +232,6 @@ class _QuestionBuilderScreenState extends ConsumerState<QuestionBuilderScreen> {
                 _error = null;
               }),
             ),
-            if (_type == QuestionType.photoAnswer) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: context.status.info.container,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.photo_camera_outlined,
-                      size: 18,
-                      color: context.status.info.foreground,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'The student answers on paper and photographs it — up to '
-                        '${AttemptController.maxAnswerPhotos} photos. Their camera '
-                        'opens directly, and you mark the photographs by hand.',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: context.status.info.foreground),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 16),
             TextFormField(
               key: const Key('question_text'),
