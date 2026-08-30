@@ -41,14 +41,6 @@ android {
     }
 }
 
-dependencies {
-    // camera_android_camerax compiles against CallbackToFutureAdapter but does not put
-    // concurrent-futures on the consumer's compile classpath, so javac fails with
-    // "class file for androidx.concurrent.futures.CallbackToFutureAdapter not found".
-    // Declaring it here is the documented workaround.
-    implementation("androidx.concurrent:concurrent-futures:1.2.0")
-}
-
 flutter {
     source = "../.."
 }
