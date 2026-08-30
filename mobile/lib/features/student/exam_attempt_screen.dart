@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/features/student/widgets/in_app_camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uniexam/config/routes.dart';
@@ -115,6 +116,26 @@ class _ExamViewState extends ConsumerState<_ExamView> {
     }
   }
 
+  /// Opens the in-app viewfinder and hands what comes back to the controller.
+  ///
+  /// A full-screen route inside this app rather than the system camera: the exam is
+  /// pinned, and the pin cannot be released to make room for another app without the
+  /// phone demanding its PIN on the way out.
+  Future<void> _capture(AttemptController controller, AttemptQuestion question) async {
+    final shot = await Navigator.of(context).push<CapturedPhoto>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => InAppCamera(title: 'Question ${question.position}'),
+      ),
+    );
+    if (shot == null) return;
+    await controller.uploadPhoto(
+      question.examQuestionId,
+      bytes: shot.bytes,
+      filename: shot.filename,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -209,7 +230,7 @@ class _ExamViewState extends ConsumerState<_ExamView> {
             urls: question.answerImageUrls,
             maxPhotos: AttemptController.maxAnswerPhotos,
             busy: view.capturingQuestionId == question.examQuestionId,
-            onCapture: () => controller.capturePhoto(question.examQuestionId),
+            onCapture: () => _capture(controller, question),
             onRemove: (url) => controller.removePhoto(question.examQuestionId, url),
           )
         else if (question.isCode)

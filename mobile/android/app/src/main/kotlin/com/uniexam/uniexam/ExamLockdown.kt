@@ -69,51 +69,6 @@ class ExamLockdown(private val activity: Activity) {
         return Status(!secure, !immersive, false, false, "Lockdown released")
     }
 
-    /**
-     * Steps out of lock task so the app can launch another one, and comes back.
-     *
-     * A pinned app cannot start the camera: Android refuses to bring another activity
-     * to the front, and what the student sees is the exam apparently closing and
-     * reopening. A PHOTO_ANSWER question requires exactly that launch, so the pin is
-     * released for the length of the excursion and taken again afterwards.
-     *
-     * `FLAG_SECURE` is deliberately left on throughout. It is the one protection the
-     * platform genuinely enforces on an unmanaged device, and there is no reason to
-     * drop it while the camera is open.
-     */
-    fun suspendForExcursion(): Boolean {
-        if (!engaged) return false
-        stopLockTask()
-        return true
-    }
-
-    /** True when the system already has us pinned or locked. */
-    fun lockTaskActive(): Boolean = try {
-        val manager = activity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            manager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
-    } catch (error: Exception) {
-        false
-    }
-
-    /**
-     * Retakes the pin after an excursion. Reports whether it actually got it back.
-     *
-     * Must only be called once the activity is resumed. `startLockTask` from an
-     * activity that is still coming back from the camera is refused by the platform,
-     * and on a device set to "ask for PIN before unpinning" the refusal surfaces as the
-     * keyguard -- the student photographs their work and is dropped on the lock screen.
-     *
-     * Skips the call entirely when the system already has us pinned, which is what
-     * happens on the devices that keep the pin across the excursion.
-     */
-    fun resumeAfterExcursion(): Boolean {
-        if (!engaged) return false
-        if (lockTaskActive()) return true
-        val (locked, _, _) = startLockTask()
-        return locked
-    }
-
     fun isEngaged(): Boolean = engaged
 
     /**

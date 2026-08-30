@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/core/exam_security.dart';
 import 'package:uniexam/models/attempt.dart';
@@ -287,52 +287,34 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
   /// real limit — this exists so the button can explain itself before being tapped.
   static const int maxAnswerPhotos = 3;
 
-  /// Opens the camera, uploads what was taken, and stores what the server confirms.
+  /// Stores a photograph the student has just taken, and uploads it.
   ///
-  /// [ImageSource.camera] rather than the gallery: the question asks the student to
-  /// photograph the page in front of them, and a gallery would let them attach
-  /// something prepared earlier. That is a default matching the intent, not a control.
-  Future<void> capturePhoto(int examQuestionId) async {
+  /// The capture itself happens in the exam's own screen rather than in the system
+  /// camera. The obvious implementation launched the camera app, and it could not
+  /// work: the exam is pinned to the screen, Android will not bring another app
+  /// forward while it is, and releasing the pin to allow it is what put the phone on
+  /// its lock screen -- pinning asks for the PIN before it lets go.
+  ///
+  /// So the bytes arrive already captured. Nothing is unpinned and the student never
+  /// leaves the paper.
+  Future<void> uploadPhoto(
+    int examQuestionId, {
+    required Uint8List bytes,
+    required String filename,
+  }) async {
     final view = state.valueOrNull;
     if (view == null || view.isFinished || view.capturingQuestionId != null) return;
-
-    // The exam is pinned to the screen, and a pinned app cannot bring the camera
-    // forward -- Android refuses, and the student sees the exam close and reopen. Step
-    // out of the lock deliberately, and step back into it whatever happens next.
-    final security = ref.read(examSecurityProvider);
-    await security.beginExcursion();
-
-    final XFile? shot;
-    try {
-      shot = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        imageQuality: 70,
-        maxWidth: 2000,
-      );
-    } catch (_) {
-      // No camera, or permission refused. Said plainly rather than as a dead button.
-      await security.endExcursion();
-      state = AsyncData(view.copyWith(
-        error: 'Could not open the camera. Check the app has permission to use it.',
-      ));
-      return;
-    }
-    // Back in the exam: retake the lock before anything else, including on the path
-    // where the student backed out of the camera without taking a picture.
-    await security.endExcursion();
-    if (shot == null) return;
 
     state = AsyncData(view.copyWith(
       capturingQuestionId: examQuestionId,
       clearError: true,
     ));
     try {
-      final bytes = await shot.readAsBytes();
       final ack = await ref.read(studentRepositoryProvider).addAnswerPhoto(
             arg,
             examQuestionId: examQuestionId,
             bytes: bytes,
-            filename: shot.name,
+            filename: filename,
           );
       _applyPhotos(examQuestionId, ack);
     } on ApiException catch (error) {
