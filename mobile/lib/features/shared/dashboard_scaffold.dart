@@ -237,6 +237,7 @@ class CourseTile extends StatelessWidget {
     required this.course,
     this.onTap,
     this.onDelete,
+    this.onToggleArchive,
     this.busy = false,
   });
 
@@ -246,6 +247,11 @@ class CourseTile extends StatelessWidget {
   /// Shown only where deleting is offered, which is the course list. The dashboard
   /// passes nothing, so a summary row cannot destroy anything by accident.
   final VoidCallback? onDelete;
+
+  /// Archive, or put back. Archiving used to live only as a switch inside the edit
+  /// form, which made it easy to do and hard to undo -- an archived course opened the
+  /// detail screen, and the way back was three taps away in a form.
+  final VoidCallback? onToggleArchive;
   final bool busy;
 
   @override
@@ -305,6 +311,20 @@ class CourseTile extends StatelessWidget {
                 children: [
                   if (archived)
                     StatusPill(label: 'Archived', colour: context.status.neutral),
+                  if (onToggleArchive != null && !busy)
+                    IconButton(
+                      key: Key('archive_course_${course.id}'),
+                      tooltip: archived ? 'Put back in use' : 'Archive',
+                      onPressed: onToggleArchive,
+                      icon: Icon(
+                        archived
+                            ? Icons.unarchive_outlined
+                            : Icons.archive_outlined,
+                        color: archived
+                            ? context.status.success.foreground
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   if (onDelete != null) ...[
                     const SizedBox(width: 4),
                     busy

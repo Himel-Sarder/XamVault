@@ -130,6 +130,44 @@ void main() {
     });
   });
 
+  group('archiving and putting back', () {
+    testWidgets('an active course can be archived from its row', (tester) async {
+      // It used to be a switch inside the edit form: easy to do, hard to undo.
+      tall(tester);
+      final courses = mixedShelf();
+      await tester.pumpWidget(wrap(as: _admin, courses: courses));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('archive_course_1')));
+      await tester.pumpAndSettle();
+
+      expect(courses.updated.single.id, 1);
+      expect(courses.updated.single.isActive, isFalse);
+      expect(find.textContaining('archived'), findsOneWidget);
+    });
+
+    testWidgets('and an archived one put back', (tester) async {
+      tall(tester);
+      final courses = mixedShelf();
+      await tester.pumpWidget(wrap(as: _admin, courses: courses));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('archive_course_2')));
+      await tester.pumpAndSettle();
+
+      expect(courses.updated.single.isActive, isTrue);
+      expect(find.textContaining('back in use'), findsOneWidget);
+    });
+
+    testWidgets('a student is offered neither', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(wrap(as: _student));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('archive_course_1')), findsNothing);
+    });
+  });
+
   group('deleting a course', () {
     testWidgets('it counts what would go before asking', (tester) async {
       tall(tester);

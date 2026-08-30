@@ -114,6 +114,36 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
     }
   }
 
+  Future<void> _toggleArchive(Course course) async {
+    setState(() => _busyId = course.id);
+    try {
+      await ref
+          .read(courseRepositoryProvider)
+          .update(course.id, isActive: !course.isActive);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              course.isActive
+                  ? '${course.courseCode} archived. Find it under Archived.'
+                  : '${course.courseCode} is back in use.',
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyId = null);
+        ref.invalidate(courseProvider);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final courses = ref.watch(courseProvider);
@@ -189,6 +219,8 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
                               busy: _busyId == course.id,
                               onDelete:
                                   canDelete ? () => _confirmDelete(course) : null,
+                              onToggleArchive:
+                                  canDelete ? () => _toggleArchive(course) : null,
                               onTap: isTeacher
                                   ? () => context.push(Routes.teacherCourse(course.id))
                                   // An admin's job here is who runs it and who is on
