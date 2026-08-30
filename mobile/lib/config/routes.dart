@@ -21,6 +21,10 @@ class Routes {
 
   static String teacherCourseEdit(int courseId) =>
       '/teacher/courses/$courseId/edit';
+  static String teacherCourseAddStudents(int courseId) =>
+      '/teacher/courses/$courseId/enrollments/add';
+  static String adminCourseAddStudents(int courseId) =>
+      '/admin/courses/$courseId/enrollments/add';
   static String teacherCourseEnrollments(int courseId) =>
       '/teacher/courses/$courseId/enrollments';
 

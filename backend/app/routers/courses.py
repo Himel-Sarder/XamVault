@@ -8,6 +8,8 @@ from app.core.deps import AdminUser, CurrentUser, DbSession, TeacherUser
 from app.schemas.common import Page, PageParams
 from app.schemas.course import (
     CourseDeletionImpact,
+    EnrolmentCandidate,
+    EnrolmentCandidates,
     BulkEnrollmentCreate,
     CourseAssign,
     CourseAssignResponse,
@@ -121,6 +123,52 @@ def delete_course(course_id: int, current_user: TeacherUser, db: DbSession) -> N
 )
 def list_enrollments(course_id: int, current_user: TeacherUser, db: DbSession) -> object:
     return CourseService(db).list_enrollments(course_id, current_user)
+
+
+@router.get(
+    "/{course_id}/candidates",
+    response_model=EnrolmentCandidates,
+    summary="Students who could be added to this course",
+)
+def enrolment_candidates(
+    course_id: int,
+    current_user: TeacherUser,
+    db: DbSession,
+    study_year: Annotated[int | None, Query(ge=1, le=4)] = None,
+    semester: Annotated[int | None, Query(ge=1, le=2)] = None,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+) -> EnrolmentCandidates:
+    """Scoped to this course: the people who could go on its roll, and nobody else.
+
+    Already-enrolled students are left out. Narrowed to the course's own department
+    when it has one, so picking a year is usually enough.
+    """
+    found, truncated = CourseService(db).enrolment_candidates(
+        course_id, current_user, study_year=study_year, semester=semester, search=search
+    )
+    return EnrolmentCandidates(
+        items=[
+            EnrolmentCandidate(
+                id=student.id,
+                user_id=student.user_id,
+                name=student.name,
+                student_id=(
+                    student.student_profile.student_id if student.student_profile else None
+                ),
+                study_year=(
+                    student.student_profile.study_year if student.student_profile else None
+                ),
+                semester=(
+                    student.student_profile.semester if student.student_profile else None
+                ),
+                session=(
+                    student.student_profile.session if student.student_profile else None
+                ),
+            )
+            for student in found
+        ],
+        truncated=truncated,
+    )
 
 
 @router.post(

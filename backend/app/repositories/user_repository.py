@@ -9,6 +9,7 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.enums import UserRole
 from app.models.user import StudentProfile, TeacherProfile, User
 
 
@@ -82,6 +83,56 @@ class UserRepository:
                 func.lower(User.name).like(pattern) | func.lower(User.user_id).like(pattern)
             )
         return stmt
+
+    def students_at_stage(
+        self,
+        *,
+        study_year: int | None,
+        semester: int | None,
+        department_id: int | None,
+        search: str | None,
+        exclude_ids: set[int],
+        limit: int,
+    ) -> list[User]:
+        """Active students filed at a given point in the programme.
+
+        Ordered by student id, which is how a roll list is read, rather than by row id.
+        """
+        stmt = (
+            select(User)
+            .join(StudentProfile, StudentProfile.user_id == User.id)
+            .where(User.role == UserRole.STUDENT, User.is_active.is_(True))
+            .options(selectinload(User.student_profile))
+        )
+        if study_year is not None:
+            stmt = stmt.where(StudentProfile.study_year == study_year)
+        if semester is not None:
+            stmt = stmt.where(StudentProfile.semester == semester)
+        if department_id is not None:
+            # The profile's department, falling back to the account's, because a
+            # student created before departments were on the profile has only the one.
+            stmt = stmt.where(
+                (StudentProfile.department_id == department_id)
+                | (
+                    StudentProfile.department_id.is_(None)
+                    & (User.department_id == department_id)
+                )
+            )
+        if search:
+            pattern = f"%{search.lower()}%"
+            stmt = stmt.where(
+                func.lower(User.name).like(pattern)
+                | func.lower(StudentProfile.student_id).like(pattern)
+                | func.lower(User.user_id).like(pattern)
+            )
+        if exclude_ids:
+            stmt = stmt.where(User.id.notin_(exclude_ids))
+
+        return list(
+            self.db.execute(stmt.order_by(StudentProfile.student_id).limit(limit))
+            .scalars()
+            .all()
+        )
 
     def list_paged(
         self, *, role: str | None, search: str | None, offset: int, limit: int

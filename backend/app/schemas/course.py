@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import ORMModel
 from app.schemas.user import UserSummary
@@ -140,3 +140,29 @@ class CourseDeletionImpact(BaseModel):
     attempts: int
     results: int
     enrolments: int
+
+
+class EnrolmentCandidate(BaseModel):
+    """A student who could be put on this course's roll."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: str
+    name: str
+    student_id: str | None
+    study_year: int | None
+    semester: int | None
+    session: str | None
+
+
+class EnrolmentCandidates(BaseModel):
+    """Who matches, and how many the filter left out.
+
+    ``truncated`` exists so "Add all" can never quietly enrol a different set from the
+    one on screen: when it is true the list is a page, not the whole cohort, and the
+    button says so instead of pretending.
+    """
+
+    items: list[EnrolmentCandidate]
+    truncated: bool

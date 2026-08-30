@@ -11,6 +11,7 @@ import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/course_deletion_impact.dart';
 import 'package:uniexam/models/department.dart';
 import 'package:uniexam/models/enrollment.dart';
+import 'package:uniexam/models/enrolment_candidate.dart';
 import 'package:uniexam/models/exam.dart';
 import 'package:uniexam/models/exam_result.dart';
 import 'package:uniexam/models/join_request.dart';
@@ -151,6 +152,26 @@ class FakeCourseRepository implements CourseRepository {
   );
 
   final List<int> deleted = [];
+
+  /// Who the cohort browser would offer. Set per test.
+  EnrolmentCandidates candidates =
+      const EnrolmentCandidates(items: [], truncated: false);
+
+  /// Every filter the screen asked with, so a test can check it narrowed rather than
+  /// fetching everyone and filtering on the client.
+  final List<({int? studyYear, int? semester, String? search})> candidateQueries = [];
+
+  @override
+  Future<EnrolmentCandidates> enrolmentCandidates(
+    int courseId, {
+    int? studyYear,
+    int? semester,
+    String? search,
+  }) async {
+    candidateQueries
+        .add((studyYear: studyYear, semester: semester, search: search));
+    return candidates;
+  }
 
   @override
   Future<CourseDeletionImpact> deletionImpact(int courseId) async => impact;

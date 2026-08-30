@@ -18,6 +18,7 @@ import 'package:uniexam/features/teacher/admin_dashboard_screen.dart';
 import 'package:uniexam/features/teacher/course_detail_screen.dart';
 import 'package:uniexam/features/teacher/course_form_screen.dart';
 import 'package:uniexam/features/teacher/departments_screen.dart';
+import 'package:uniexam/features/teacher/add_students_screen.dart';
 import 'package:uniexam/features/teacher/enrollments_screen.dart';
 import 'package:uniexam/features/teacher/settings_screen.dart';
 import 'package:uniexam/features/teacher/users_screen.dart';
@@ -96,6 +97,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (_, state) => EnrollmentsScreen(
                       courseId: int.parse(state.pathParameters['courseId']!),
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'add',
+                        builder: (_, state) => AddStudentsScreen(
+                          courseId: int.parse(state.pathParameters['courseId']!),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -232,6 +241,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => EnrollmentsScreen(
                   courseId: int.parse(state.pathParameters['courseId']!),
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    builder: (_, state) => AddStudentsScreen(
+                      courseId: int.parse(state.pathParameters['courseId']!),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

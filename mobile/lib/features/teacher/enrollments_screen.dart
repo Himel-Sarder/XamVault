@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:uniexam/providers/auth_provider.dart';
+import 'package:uniexam/models/user.dart';
+import 'package:uniexam/config/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/models/enrollment.dart';
@@ -69,6 +73,20 @@ class _EnrollmentsScreenState extends ConsumerState<EnrollmentsScreen> {
         ref.invalidate(enrollmentsProvider(widget.courseId));
       }
     }
+  }
+
+  /// Browse the cohort instead of typing ids.
+  ///
+  /// Pasting a list works when you have the list. Picking "4th year, 1st semester" and
+  /// tapping "Add all" works when you do not, which is most of the time.
+  Future<void> _browseCohort() async {
+    final role = ref.read(authProvider).user?.role;
+    await context.push(
+      role == UserRole.admin
+          ? Routes.adminCourseAddStudents(widget.courseId)
+          : Routes.teacherCourseAddStudents(widget.courseId),
+    );
+    if (mounted) refreshCourse(ref, widget.courseId);
   }
 
   Future<void> _addMany() async {
@@ -196,8 +214,14 @@ class _EnrollmentsScreenState extends ConsumerState<EnrollmentsScreen> {
         title: const Text('Enrolled Students'),
         actions: [
           IconButton(
+            key: const Key('browse_cohort'),
+            tooltip: 'Add a year group',
+            onPressed: _busy ? null : _browseCohort,
+            icon: const Icon(Icons.groups_outlined),
+          ),
+          IconButton(
             key: const Key('bulk_enrol'),
-            tooltip: 'Enrol a list',
+            tooltip: 'Enrol a pasted list',
             onPressed: _busy ? null : _addMany,
             icon: const Icon(Icons.playlist_add),
           ),

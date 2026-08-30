@@ -264,6 +264,47 @@ class CourseService:
         self.db.refresh(enrollment, ["student"])
         return enrollment
 
+    #: The most candidates one request will return. A cohort is a few hundred at most,
+    #: and a teacher scrolling past this many has the wrong filter, not too small a page.
+    CANDIDATE_LIMIT = 300
+
+    def enrolment_candidates(
+        self,
+        course_id: int,
+        actor: User,
+        *,
+        study_year: int | None,
+        semester: int | None,
+        search: str | None,
+    ) -> tuple[list[User], bool]:
+        """Students who could be enrolled on this course, filtered by where they are.
+
+        Scoped to the course rather than exposing the user directory: a teacher gets
+        the people they could put on their own roll, and nothing else. Already-enrolled
+        students are left out, because the answer to "add them" is that they are here.
+
+        Returns the candidates and whether the list was cut short.
+        """
+        course = self._get_manageable(course_id, actor)
+
+        enrolled = {
+            row.student_id
+            for row in self.courses.list_enrollments(course.id)
+        }
+        found = self.users.students_at_stage(
+            study_year=study_year,
+            semester=semester,
+            # A course belongs to a department, and its roll almost always comes from
+            # that department. Passing it narrows the list without the teacher having
+            # to say so; a course with no department is not narrowed at all.
+            department_id=course.department_id,
+            search=search.strip() if search else None,
+            exclude_ids=enrolled,
+            limit=self.CANDIDATE_LIMIT + 1,
+        )
+        truncated = len(found) > self.CANDIDATE_LIMIT
+        return found[: self.CANDIDATE_LIMIT], truncated
+
     def enroll_bulk(
         self, course_id: int, student_user_ids: list[str], actor: User
     ) -> BulkEnrollmentResponse:

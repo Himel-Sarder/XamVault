@@ -2,6 +2,7 @@ import 'package:uniexam/core/api_client.dart';
 import 'package:uniexam/models/course.dart';
 import 'package:uniexam/models/course_deletion_impact.dart';
 import 'package:uniexam/models/enrollment.dart';
+import 'package:uniexam/models/enrolment_candidate.dart';
 import 'package:uniexam/models/paged.dart';
 
 /// Courses and their rolls.
@@ -97,6 +98,25 @@ class CourseRepository {
   }
 
   Future<void> delete(int courseId) => _api.delete('/courses/$courseId');
+
+  /// Students who could go on this course's roll, filtered by where they are in the
+  /// programme. Already-enrolled students are left out by the server.
+  Future<EnrolmentCandidates> enrolmentCandidates(
+    int courseId, {
+    int? studyYear,
+    int? semester,
+    String? search,
+  }) async {
+    final data = await _api.get<Map<String, dynamic>>(
+      '/courses/$courseId/candidates',
+      query: {
+        'study_year': ?studyYear,
+        'semester': ?semester,
+        'search': ?(search != null && search.trim().isNotEmpty ? search.trim() : null),
+      },
+    );
+    return EnrolmentCandidates.fromJson(data);
+  }
 
   Future<List<Enrollment>> enrollments(int courseId) async {
     final data = await _api.get<List<dynamic>>('/courses/$courseId/enrollments');
