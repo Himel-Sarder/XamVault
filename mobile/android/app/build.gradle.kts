@@ -87,17 +87,42 @@ val stripDevPluginRegistrations = tasks.register("stripDevPluginRegistrations") 
         val lines = registrant.readLines()
         val drop = sortedSetOf<Int>()
         lines.forEachIndexed { index, line ->
-            // The catch line names the plugin: Log.e(TAG, "Error registering plugin <name>, ...
-            val named = devOnly.any { line.contains("Error registering plugin $it,") }
-            if (named) {
-                // A registration is a fixed five-line block: try / add / catch / log / }.
-                val start = (index - 2).coerceAtLeast(0)
-                for (i in start..(index + 1).coerceAtMost(lines.lastIndex)) drop.add(i)
+            // The catch line names the plugin:
+            //   Log.e(TAG, "Error registering plugin <name>, <class>", e);
+            if (devOnly.none { line.contains("Error registering plugin $it,") }) return@forEachIndexed
+
+            // Find the block's own boundaries rather than counting lines out from
+            // here. A fixed offset was wrong by one and left the `try {` behind, which
+            // produced Java that would not parse -- and the line count still looked
+            // right, so the mistake survived a check that only counted.
+            var open = index
+            while (open >= 0 && lines[open].trim() != "try {") open--
+            var close = index
+            while (close < lines.size && lines[close].trim() != "}") close++
+
+            if (open < 0 || close >= lines.size || close - open > 8) {
+                throw GradleException(
+                    "GeneratedPluginRegistrant.java is not shaped as expected around " +
+                        "line ${index + 1}; refusing to edit it blind."
+                )
             }
+            for (i in open..close) drop.add(i)
         }
         if (drop.isEmpty()) return@doLast
 
         val kept = lines.filterIndexed { index, _ -> index !in drop }
+
+        // Braces must still balance. Writing unparseable Java here would fail the build
+        // in a file nobody wrote, which is exactly the confusion this task exists to
+        // stop causing.
+        val balance = kept.sumOf { line -> line.count { it == '{' } - line.count { it == '}' } }
+        if (balance != 0) {
+            throw GradleException(
+                "Stripping dev plugins from GeneratedPluginRegistrant.java left " +
+                    "unbalanced braces ($balance); refusing to write it."
+            )
+        }
+
         registrant.writeText(kept.joinToString(System.lineSeparator()) + System.lineSeparator())
         logger.lifecycle(
             "Stripped dev-only plugin registrations from GeneratedPluginRegistrant: " +

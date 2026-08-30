@@ -21,7 +21,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # So a universal APK built at +1 is a *downgrade* from an arm64 split at 2001, and
 # Android refuses it with nothing more helpful than "App not installed". Starting above
 # every offset any previous split could have produced keeps that from recurring.
-version: 1.0.0+3004
+version: 1.0.0+3005
 
 environment:
   sdk: ^3.11.0
