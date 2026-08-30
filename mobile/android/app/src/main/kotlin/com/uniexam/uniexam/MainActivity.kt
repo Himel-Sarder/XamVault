@@ -42,6 +42,18 @@ class MainActivity : FlutterActivity() {
      */
     private var inSanctionedExcursion = false
 
+    /** Whether the activity is between onResume and onPause right now. */
+    private var resumed = false
+
+    /**
+     * Set when Flutter asked for the pin back while we were still returning from the
+     * camera. `startLockTask` from an activity that is not resumed is refused, and on a
+     * device set to "ask for PIN before unpinning" that refusal surfaces as the
+     * keyguard -- the student photographs their page and lands on the lock screen. So
+     * the request is remembered and honoured in onResume instead.
+     */
+    private var relockWhenResumed = false
+
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var timeChangeReceiver: android.content.BroadcastReceiver? = null
 
@@ -104,8 +116,16 @@ class MainActivity : FlutterActivity() {
                     result.success(lockdown.suspendForExcursion())
                 }
                 "endExcursion" -> {
-                    val regained = lockdown.resumeAfterExcursion()
                     inSanctionedExcursion = false
+                    // Flutter calls this the moment the picker returns, which is before
+                    // the activity is back. Taking the pin now is what puts the student
+                    // on the lock screen.
+                    val regained = if (resumed) {
+                        lockdown.resumeAfterExcursion()
+                    } else {
+                        relockWhenResumed = true
+                        lockdown.lockTaskActive()
+                    }
                     result.success(regained)
                 }
                 "isSupported" -> result.success(true)
@@ -132,6 +152,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onPause() {
         super.onPause()
+        resumed = false
         if (examRunning && !inSanctionedExcursion) {
             backgroundedAt = System.currentTimeMillis()
             report("APP_BACKGROUND", emptyMap())
@@ -140,6 +161,11 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
+        if (relockWhenResumed) {
+            relockWhenResumed = false
+            lockdown.resumeAfterExcursion()
+        }
         if (examRunning && !inSanctionedExcursion) {
             val away = backgroundedAt?.let { System.currentTimeMillis() - it }
             backgroundedAt = null

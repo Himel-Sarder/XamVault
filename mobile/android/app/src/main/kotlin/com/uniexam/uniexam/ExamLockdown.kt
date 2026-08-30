@@ -87,9 +87,29 @@ class ExamLockdown(private val activity: Activity) {
         return true
     }
 
-    /** Retakes the pin after an excursion. Reports whether it actually got it back. */
+    /** True when the system already has us pinned or locked. */
+    fun lockTaskActive(): Boolean = try {
+        val manager = activity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            manager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+    } catch (error: Exception) {
+        false
+    }
+
+    /**
+     * Retakes the pin after an excursion. Reports whether it actually got it back.
+     *
+     * Must only be called once the activity is resumed. `startLockTask` from an
+     * activity that is still coming back from the camera is refused by the platform,
+     * and on a device set to "ask for PIN before unpinning" the refusal surfaces as the
+     * keyguard -- the student photographs their work and is dropped on the lock screen.
+     *
+     * Skips the call entirely when the system already has us pinned, which is what
+     * happens on the devices that keep the pin across the excursion.
+     */
     fun resumeAfterExcursion(): Boolean {
         if (!engaged) return false
+        if (lockTaskActive()) return true
         val (locked, _, _) = startLockTask()
         return locked
     }
