@@ -32,4 +32,14 @@ class DepartmentRepository {
     );
     return Department.fromJson(data);
   }
+
+  /// Who would lose their department. Read before the confirmation.
+  Future<DepartmentDeletionImpact> deletionImpact(int id) async {
+    final data = await _api.get<Map<String, dynamic>>(
+      '/departments/$id/deletion-impact',
+    );
+    return DepartmentDeletionImpact.fromJson(data);
+  }
+
+  Future<void> delete(int id) => _api.delete('/departments/$id');
 }

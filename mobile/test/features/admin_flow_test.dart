@@ -7,6 +7,7 @@ import 'package:uniexam/features/teacher/course_form_screen.dart';
 import 'package:uniexam/features/teacher/departments_screen.dart';
 import 'package:uniexam/features/teacher/enrollments_screen.dart';
 import 'package:uniexam/features/teacher/users_screen.dart';
+import 'package:uniexam/models/department.dart';
 import 'package:uniexam/models/enrollment.dart';
 import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -374,17 +375,67 @@ void main() {
       expect(field.readOnly, isTrue);
     });
 
-    testWidgets('a department can be renamed and nothing else', (tester) async {
+    testWidgets('a department can be renamed or deleted', (tester) async {
       useTallSurface(tester);
       await tester.pumpWidget(wrap(const DepartmentsScreen()));
       await tester.pumpAndSettle();
 
-      // Archiving was removed: it hid a department without saying where it went, and
-      // deleting is not offered because courses and users point at one and would be
-      // stranded. Renaming is the whole of what a department needs.
+      // Archiving is gone; deleting replaced it. Nothing is stranded by a delete --
+      // every reference to a department is SET NULL server-side.
       expect(find.byKey(const Key('department_rename_1')), findsOneWidget);
+      expect(find.byKey(const Key('department_delete_1')), findsOneWidget);
       expect(find.text('Archive'), findsNothing);
-      expect(find.text('Delete'), findsNothing);
+    });
+
+    testWidgets('an empty department deletes quietly', (tester) async {
+      useTallSurface(tester);
+      final departments = FakeDepartmentRepository();
+      await tester.pumpWidget(wrap(const DepartmentsScreen(), department: departments));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('department_delete_1')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Nothing belongs to it'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('confirm_delete_department')));
+      await tester.pumpAndSettle();
+
+      expect(departments.deleted, [1]);
+    });
+
+    testWidgets('one with courses says they survive without a department',
+        (tester) async {
+      // "3 courses" must not read as "3 courses will be deleted".
+      useTallSurface(tester);
+      final departments = FakeDepartmentRepository()
+        ..impact = const DepartmentDeletionImpact(
+          courses: 3,
+          teachers: 2,
+          students: 40,
+        );
+      await tester.pumpWidget(wrap(const DepartmentsScreen(), department: departments));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('department_delete_1')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('3 courses'), findsOneWidget);
+      expect(find.textContaining('40 students'), findsOneWidget);
+      expect(find.textContaining('keep everything they have'), findsOneWidget);
+    });
+
+    testWidgets('keeping it deletes nothing', (tester) async {
+      useTallSurface(tester);
+      final departments = FakeDepartmentRepository();
+      await tester.pumpWidget(wrap(const DepartmentsScreen(), department: departments));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('department_delete_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Keep'));
+      await tester.pumpAndSettle();
+
+      expect(departments.deleted, isEmpty);
     });
   });
 

@@ -329,11 +329,35 @@ class FakeDepartmentRepository implements DepartmentRepository {
     updated.add((id: id, name: name, isActive: isActive));
     return departments.firstWhere((d) => d.id == id);
   }
+
+  /// What deleting one would leave unassigned. Set per test; nothing by default,
+  /// which is the case a confirmation should be quietest about.
+  DepartmentDeletionImpact impact =
+      const DepartmentDeletionImpact(courses: 0, teachers: 0, students: 0);
+
+  final List<int> deleted = [];
+
+  @override
+  Future<DepartmentDeletionImpact> deletionImpact(int id) async => impact;
+
+  @override
+  Future<void> delete(int id) async {
+    deleted.add(id);
+    departments.removeWhere((d) => d.id == id);
+  }
 }
 
 /// A department list that will not load, for the case where the picker fails but the
 /// form must still be usable.
 class FailingDepartmentRepository implements DepartmentRepository {
+  @override
+  Future<DepartmentDeletionImpact> deletionImpact(int id) async =>
+      throw const ApiException('Departments are unavailable');
+
+  @override
+  Future<void> delete(int id) async =>
+      throw const ApiException('Departments are unavailable');
+
   @override
   Future<List<Department>> list() async =>
       throw const ApiException('Departments are unavailable');

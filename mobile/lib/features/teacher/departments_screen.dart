@@ -67,6 +67,76 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
     }
   }
 
+  Future<void> _confirmDelete(Department department) async {
+    final departments = ref.read(departmentRepositoryProvider);
+
+    DepartmentDeletionImpact impact;
+    try {
+      impact = await departments.deletionImpact(department.id);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('delete_department_dialog'),
+        title: const Text('Delete this department?'),
+        content: Text(
+          impact.isEmpty
+              ? '${department.code} - ${department.name} will be removed. '
+                  'Nothing belongs to it.'
+              // Not destroyed, unassigned. The distinction matters: an administrator
+              // reading "3 courses" needs to know they survive.
+              : '${department.code} - ${department.name} will be removed. Its '
+                  '${impact.affected.join(', ')} will keep everything they have, but '
+                  'will no longer belong to a department, and somebody will have to '
+                  'put that right.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            key: const Key('confirm_delete_department'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: impact.isEmpty
+                ? null
+                : FilledButton.styleFrom(
+                    backgroundColor: dialogContext.status.danger.foreground,
+                    foregroundColor: Colors.white,
+                  ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    setState(() => _busyId = department.id);
+    try {
+      await departments.delete(department.id);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyId = null);
+        ref.invalidate(departmentsProvider);
+        // Courses and people just lost a department; anything showing one is stale.
+        ref.invalidate(courseProvider);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final departments = ref.watch(departmentsProvider);
@@ -138,11 +208,23 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
                 width: 20,
                 child: InlineLoader(size: 20),
               )
-            : IconButton(
-                key: Key('department_rename_${department.id}'),
-                tooltip: 'Rename',
-                onPressed: () => _rename(department),
-                icon: const Icon(Icons.edit_outlined),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: Key('department_rename_${department.id}'),
+                    tooltip: 'Rename',
+                    onPressed: () => _rename(department),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  IconButton(
+                    key: Key('department_delete_${department.id}'),
+                    tooltip: 'Delete',
+                    onPressed: () => _confirmDelete(department),
+                    icon: Icon(Icons.delete_outline,
+                        color: context.status.danger.foreground),
+                  ),
+                ],
               ),
       ),
     );
