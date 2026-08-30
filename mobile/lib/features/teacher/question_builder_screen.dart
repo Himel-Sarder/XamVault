@@ -378,7 +378,7 @@ class _QuestionBuilderScreenState extends ConsumerState<QuestionBuilderScreen> {
                 child: _saving
                     ? const SizedBox(
                         height: 22, width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                        child: InlineLoader(size: 22),
                       )
                     : Text(widget.isEditing ? 'Save question' : 'Add question'),
               ),

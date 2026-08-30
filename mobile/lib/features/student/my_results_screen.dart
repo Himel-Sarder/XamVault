@@ -178,7 +178,7 @@ class _ResultCardState extends ConsumerState<_ResultCard> {
                   icon: _exporting
                       ? const SizedBox(
                           height: 14, width: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: InlineLoader(size: 14))
                       : const Icon(Icons.download_outlined, size: 18),
                   label: const Text('PDF'),
                 ),

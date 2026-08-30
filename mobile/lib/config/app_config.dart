@@ -61,5 +61,13 @@ class AppConfig {
   static const String wakeHint =
       'Waking the server. The first request after a quiet spell can take up to a minute.';
 
-  static const String appName = 'UniExam';
+  /// The name on the launcher, the task switcher and the sign-in screen.
+  ///
+  /// The Dart package is still `uniexam` and the Android applicationId is still
+  /// `com.uniexam.uniexam`. Neither is user-visible, and changing the latter would
+  /// make this install as a second app rather than an update to the first.
+  static const String appName = 'XamVault';
+
+  /// The logo, as one constant so no screen hardcodes the path.
+  static const String logoAsset = 'assets/logo-xamv.png';
 }

@@ -155,7 +155,7 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: InlineLoader(size: 20),
               )
             : PopupMenuButton<String>(
                 key: Key('department_menu_${department.id}'),

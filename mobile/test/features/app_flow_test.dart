@@ -33,7 +33,7 @@ Widget app({
       studentRepositoryProvider.overrideWithValue(student ?? FakeStudentRepository()),
       examRepositoryProvider.overrideWithValue(exams ?? FakeExamRepository()),
     ],
-    child: const UniExamApp(),
+    child: const XamVaultApp(),
   );
 }
 
@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('University Examination Platform'), findsOneWidget);
+    expect(find.text('Examinations, under lock and key'), findsOneWidget);
   });
 
   testWidgets('a stored teacher session restores straight to the teacher dashboard',

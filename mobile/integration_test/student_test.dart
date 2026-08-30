@@ -39,7 +39,7 @@ Future<void> _signIn(WidgetTester tester, String userId, String password) async 
 /// next. Everything else is the real app: real Dio client, real API, real database.
 Widget app() => ProviderScope(
       overrides: [tokenStoreProvider.overrideWithValue(InMemoryTokenStore())],
-      child: const UniExamApp(),
+      child: const XamVaultApp(),
     );
 
 void main() {

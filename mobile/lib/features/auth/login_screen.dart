@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:uniexam/widgets/status_views.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/config/app_config.dart';
-import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/brand_mark.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -71,17 +72,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Center(
                       child: Container(
-                        width: 84,
-                        height: 84,
+                        width: 96,
+                        height: 96,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          gradient: context.brandGradient,
-                          borderRadius: BorderRadius.circular(24),
+                          // The logo's own navy rather than the app gradient: the vault
+                          // is dark, and indigo-to-violet behind it made the artwork
+                          // look pasted onto the screen instead of belonging to it.
+                          gradient: BrandColours.field,
+                          borderRadius: BorderRadius.circular(26),
+                          boxShadow: [
+                            BoxShadow(
+                              color: BrandColours.deep.withValues(alpha: 0.28),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          size: 44,
-                          color: Colors.white,
-                        ),
+                        child: const BrandLogo(size: 68),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -92,7 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'University Examination Platform',
+                      'Examinations, under lock and key',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -146,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(
                             height: 14,
                             width: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: InlineLoader(size: 14),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -171,7 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? const SizedBox(
                                 height: 22,
                                 width: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                                child: InlineLoader(size: 22),
                               )
                             : const Text('Sign in'),
                       ),

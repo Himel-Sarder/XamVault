@@ -284,7 +284,7 @@ class _ExamViewState extends ConsumerState<_ExamView> {
                   ? const SizedBox(
                       height: 18,
                       width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                      child: InlineLoader(size: 18),
                     )
                   : const Icon(Icons.check_circle_outline),
               label: Text(

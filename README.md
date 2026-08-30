@@ -1,10 +1,18 @@
-# UniExam
+<p align="center">
+  <img src="logo-xamv.png" alt="XamVault" width="160">
+</p>
+
+# XamVault
 
 A secure university examination platform. Teachers set papers, students sit them under a
 server-owned clock, and marks are computed and released server-side.
 
 **Flutter** client (Android, with a web build for development) · **FastAPI** backend ·
 **PostgreSQL** on **Render** · Android-native exam lockdown in **Kotlin**.
+
+> The repository, the Dart package and the Android `applicationId` are all still
+> `uniexam`. None of the three is user-visible, and changing the last one would make the
+> app install alongside the existing one rather than update it.
 
 ---
 
@@ -228,6 +236,7 @@ UniExam/
 │   ├── alembic/versions/    12 migrations
 │   └── tests/               375 pytest tests
 ├── mobile/                  Flutter client
+│   ├── assets/              logo, and the launcher icon sources
 │   ├── lib/
 │   │   ├── config/          theme, routes, router
 │   │   ├── core/            API client, tokens, exam security channel
@@ -235,7 +244,7 @@ UniExam/
 │   │   ├── repositories/    one per API area
 │   │   ├── providers/       Riverpod
 │   │   ├── features/        screens, by role
-│   │   └── widgets/         shared components
+│   │   └── widgets/         shared components, brand mark and loading dial
 │   ├── test/                290 unit and widget tests
 │   ├── integration_test/    end-to-end, nothing faked
 │   └── android/             Kotlin lockdown, manifest, Gradle

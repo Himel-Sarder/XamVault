@@ -156,7 +156,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: InlineLoader(size: 16),
                                   )
                                 : const Icon(Icons.save_outlined),
                             label: Text(_saving ? 'Saving...' : 'Save'),

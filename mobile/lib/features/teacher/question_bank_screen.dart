@@ -144,7 +144,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
               onPressed: _selected.isEmpty || _attaching ? null : _attach,
               icon: _attaching
                   ? const SizedBox(
-                      height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      height: 18, width: 18, child: InlineLoader(size: 18))
                   : const Icon(Icons.playlist_add),
               label: Text(
                 _selected.isEmpty

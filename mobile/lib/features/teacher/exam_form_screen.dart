@@ -208,7 +208,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                        child: InlineLoader(size: 22),
                       )
                     : Text(widget.isEditing ? 'Save changes' : 'Create exam'),
               ),

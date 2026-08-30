@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/widgets/status_views.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uniexam/core/api_exception.dart';
 import 'package:uniexam/providers/providers.dart';
@@ -153,7 +154,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                        child: InlineLoader(size: 22),
                       )
                     : const Text('Change password'),
               ),

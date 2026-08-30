@@ -1,0 +1,8 @@
+# The golden previews render the brand surfaces so they can be looked at. They are
+# skipped by default because a golden is tied to the fonts and renderer of the machine
+# that produced it, and a suite that only passes on one laptop is worse than no suite.
+#
+#   flutter test test/golden --run-skipped --update-goldens
+tags:
+  golden:
+    skip: "visual preview; run with --run-skipped --update-goldens"

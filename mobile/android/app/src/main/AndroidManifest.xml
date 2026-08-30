@@ -10,7 +10,7 @@
          out of proportion. -->
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
-        android:label="UniExam"
+        android:label="XamVault"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

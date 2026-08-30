@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Matches the top of the splash gradient in splash_screen.dart. -->
+    <color name="launch_background">#0A1730</color>
+</resources>

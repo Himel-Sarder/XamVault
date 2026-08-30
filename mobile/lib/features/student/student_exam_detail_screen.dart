@@ -249,7 +249,7 @@ class _JoinSection extends StatelessWidget {
               onPressed: onStart,
               icon: starting
                   ? const SizedBox(
-                      height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                      height: 18, width: 18, child: InlineLoader(size: 18))
                   : const Icon(Icons.play_arrow),
               label: const Text('Start exam'),
             ),
@@ -270,7 +270,7 @@ class _JoinSection extends StatelessWidget {
                   ? const SizedBox(
                       height: 18,
                       width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                      child: InlineLoader(size: 18),
                     )
                   : const Icon(Icons.how_to_reg_outlined),
               label: const Text('Request to join'),

@@ -443,7 +443,8 @@ class _PublishCardState extends ConsumerState<_PublishCard> {
         child: check.when(
           loading: () => const SizedBox(
             height: 48,
-            child: Center(child: CircularProgressIndicator()),
+            // The full LoadingView's dial is 58px and would overflow this strip.
+            child: Center(child: InlineLoader(size: 26)),
           ),
           error: (error, _) => Text(
             error is ApiException ? error.message : 'Could not check this exam.',
@@ -479,7 +480,7 @@ class _PublishCardState extends ConsumerState<_PublishCard> {
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                          child: InlineLoader(size: 18),
                         )
                       : const Icon(Icons.publish_outlined),
                   label: const Text('Publish exam'),

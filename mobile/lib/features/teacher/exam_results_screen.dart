@@ -103,7 +103,7 @@ class _ExamResultsScreenState extends ConsumerState<ExamResultsScreen> {
             onPressed: _exporting != null ? null : () => _export('pdf'),
             icon: _exporting == 'pdf'
                 ? const SizedBox(
-                    height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    height: 18, width: 18, child: InlineLoader(size: 18))
                 : const Icon(Icons.picture_as_pdf_outlined),
           ),
           IconButton(
@@ -112,7 +112,7 @@ class _ExamResultsScreenState extends ConsumerState<ExamResultsScreen> {
             onPressed: _exporting != null ? null : () => _export('excel'),
             icon: _exporting == 'excel'
                 ? const SizedBox(
-                    height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    height: 18, width: 18, child: InlineLoader(size: 18))
                 : const Icon(Icons.table_chart_outlined),
           ),
         ],
@@ -152,7 +152,7 @@ class _ExamResultsScreenState extends ConsumerState<ExamResultsScreen> {
                             ? const SizedBox(
                                 height: 18,
                                 width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                                child: InlineLoader(size: 18),
                               )
                             : const Icon(Icons.campaign_outlined),
                         label: Text('Release ${pending.length} result'

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:uniexam/config/theme.dart';
+import 'package:uniexam/widgets/brand_mark.dart';
 
-/// A centred spinner with an optional caption.
+/// The app's waiting state, wherever a screen is fetching something.
+///
+/// A turning combination dial rather than the framework's spinner: it is the mechanism
+/// the logo is a picture of, so a wait looks like part of this app rather than part of
+/// Flutter. One widget for all twenty-seven call sites, so no two screens invent their
+/// own idea of what loading looks like.
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key, this.message});
 
@@ -9,17 +15,48 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(),
+          const VaultDial(size: 58),
           if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 20),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The same dial, sized to sit inside a button or a list row.
+///
+/// Small enough that the outer notches would turn to mush, so they are off.
+///
+/// The colour comes from the surrounding [IconTheme] rather than the scheme's primary,
+/// which is what a button sets for its own contents. A plain progress indicator inside a
+/// filled button draws itself primary-on-primary -- blue on blue, all but invisible --
+/// and every call site has to remember to override it. This one is right by default.
+class InlineLoader extends StatelessWidget {
+  const InlineLoader({super.key, this.size = 18, this.colour});
+
+  final double size;
+  final Color? colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return VaultDial(
+      size: size,
+      colour: colour ?? IconTheme.of(context).color,
+      strokeWidth: size / 7,
+      showTicks: false,
     );
   }
 }

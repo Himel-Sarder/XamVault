@@ -312,7 +312,7 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                        child: InlineLoader(size: 22),
                       )
                     : Text(widget.isEditing ? 'Save changes' : 'Create course'),
               ),
@@ -433,7 +433,7 @@ class _AssignTeacherState extends ConsumerState<_AssignTeacher> {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: InlineLoader(size: 20),
               )
             : const Icon(Icons.swap_horiz),
       ),

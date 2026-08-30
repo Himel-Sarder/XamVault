@@ -296,7 +296,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: InlineLoader(size: 20),
               )
             : Row(
                 mainAxisSize: MainAxisSize.min,
@@ -604,7 +604,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
               ? const SizedBox(
                   height: 18,
                   width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                  child: InlineLoader(size: 18),
                 )
               : const Text('Create'),
         ),

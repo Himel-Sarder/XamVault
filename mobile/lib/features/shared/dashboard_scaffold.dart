@@ -313,7 +313,7 @@ class CourseTile extends StatelessWidget {
                             child: SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: InlineLoader(size: 18),
                             ),
                           )
                         : IconButton(

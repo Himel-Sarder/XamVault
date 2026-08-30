@@ -239,7 +239,7 @@ class _AnswerMarkingCardState extends ConsumerState<AnswerMarkingCard> {
                     ? const SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                        child: InlineLoader(size: 18),
                       )
                     : Text(answer.isMarked ? 'Update marks' : 'Award marks'),
               ),

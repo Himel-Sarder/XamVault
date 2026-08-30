@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/widgets/status_views.dart';
 import 'package:uniexam/config/app_config.dart';
 import 'package:uniexam/config/theme.dart';
 
@@ -91,7 +92,7 @@ class PhotoAnswerField extends StatelessWidget {
                 ? const SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                    child: InlineLoader(size: 18),
                   )
                 : const Icon(Icons.photo_camera),
             label: Text(

@@ -6,11 +6,11 @@ import 'package:uniexam/config/theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: UniExamApp()));
+  runApp(const ProviderScope(child: XamVaultApp()));
 }
 
-class UniExamApp extends ConsumerWidget {
-  const UniExamApp({super.key});
+class XamVaultApp extends ConsumerWidget {
+  const XamVaultApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

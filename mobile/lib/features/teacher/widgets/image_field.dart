@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniexam/widgets/status_views.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uniexam/config/app_config.dart';
@@ -104,7 +105,7 @@ class _ImageFieldState extends ConsumerState<ImageField> {
               onPressed: _busy ? null : _pick,
               icon: _busy
                   ? const SizedBox(
-                      height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      height: 16, width: 16, child: InlineLoader(size: 16))
                   : const Icon(Icons.image_outlined),
               label: Text(url == null || url.isEmpty ? 'Choose image' : 'Replace'),
             ),

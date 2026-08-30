@@ -284,7 +284,7 @@ class _EnrollmentsScreenState extends ConsumerState<EnrollmentsScreen> {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: InlineLoader(size: 20),
               )
             : IconButton(
                 key: Key('remove_${enrollment.studentId}'),
