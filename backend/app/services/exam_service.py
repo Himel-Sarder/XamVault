@@ -138,9 +138,18 @@ class ExamService:
         self, exam_id: int, data: ExamSettingsUpdate, actor: User
     ) -> Exam:
         exam = self._get_owned(exam_id, actor)
-        self._assert_editable(exam)
+        fields = data.model_dump(exclude_none=True)
+
+        # Who may join is not part of the paper, so it stays changeable after publish --
+        # which is exactly when a teacher wants it, with students in front of them
+        # waiting to be let in. Everything else here shapes the sitting itself
+        # (shuffling, back navigation, secure mode) and must be frozen once anyone
+        # could have started, or two students sit measurably different exams.
+        if set(fields) - {"auto_approve_join"}:
+            self._assert_editable(exam)
+
         settings = exam.settings or self.exams.add_settings(ExamSettings(exam_id=exam.id))
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in fields.items():
             setattr(settings, field, value)
         self.db.commit()
         return self.get_for_teacher(exam.id, actor)

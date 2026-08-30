@@ -71,6 +71,7 @@ class StudentExam {
     required this.availability,
     required this.joinRequestStatus,
     required this.canRequestJoin,
+    this.admitsAnyoneEnrolled = false,
     required this.settings,
     this.description,
     this.startAt,
@@ -91,9 +92,19 @@ class StudentExam {
   final ExamAvailability availability;
   final JoinRequestStatus joinRequestStatus;
   final bool canRequestJoin;
+
+  /// This exam lets anyone enrolled sit it, so there is no request to make.
+  final bool admitsAnyoneEnrolled;
   final StudentExamSettings settings;
 
-  bool get isApproved => joinRequestStatus == JoinRequestStatus.approved;
+  /// Whether this student may start: approved by hand, or admitted by the exam
+  /// admitting everyone enrolled.
+  ///
+  /// The server decides the same thing independently -- this only chooses which button
+  /// to draw. An exam that admits everyone still refuses a student it rejected, and
+  /// the server sends `admits_anyone_enrolled: false` for them.
+  bool get isApproved =>
+      admitsAnyoneEnrolled || joinRequestStatus == JoinRequestStatus.approved;
   bool get isPending => joinRequestStatus == JoinRequestStatus.pending;
 
   factory StudentExam.fromJson(Map<String, dynamic> json) => StudentExam(
@@ -115,6 +126,7 @@ class StudentExam {
         availability: ExamAvailability.fromJson(json['availability'] as String),
         joinRequestStatus: JoinRequestStatus.fromJson(json['join_request_status'] as String),
         canRequestJoin: json['can_request_join'] as bool,
+        admitsAnyoneEnrolled: json['admits_anyone_enrolled'] as bool? ?? false,
         settings: StudentExamSettings.fromJson(json['settings'] as Map<String, dynamic>),
       );
 }

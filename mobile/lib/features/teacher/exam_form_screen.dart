@@ -261,6 +261,15 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
                 setState(() => _settings = _settings.copyWith(secureMode: value)),
           ),
           _toggle(
+            key: const Key('setting_auto_approve_join'),
+            title: 'Admit anyone enrolled',
+            subtitle: 'On: enrolled students start without asking. '
+                'Off: you approve each join request.',
+            value: _settings.autoApproveJoin,
+            onChanged: (value) => setState(
+                () => _settings = _settings.copyWith(autoApproveJoin: value)),
+          ),
+          _toggle(
             title: 'Show result immediately',
             subtitle: 'Reveal the score as soon as the exam is submitted',
             value: _settings.showResultImmediately,

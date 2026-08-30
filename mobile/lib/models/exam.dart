@@ -24,6 +24,7 @@ class ExamSettings {
     this.autoSubmit = true,
     this.secureMode = true,
     this.showResultImmediately = false,
+    this.autoApproveJoin = false,
     this.maxAttempts = 1,
   });
 
@@ -33,6 +34,9 @@ class ExamSettings {
   final bool autoSubmit;
   final bool secureMode;
   final bool showResultImmediately;
+
+  /// Anyone enrolled may sit it, with no join request to approve.
+  final bool autoApproveJoin;
   final int maxAttempts;
 
   factory ExamSettings.fromJson(Map<String, dynamic> json) => ExamSettings(
@@ -42,6 +46,7 @@ class ExamSettings {
         autoSubmit: json['auto_submit'] as bool? ?? true,
         secureMode: json['secure_mode'] as bool? ?? true,
         showResultImmediately: json['show_result_immediately'] as bool? ?? false,
+        autoApproveJoin: json['auto_approve_join'] as bool? ?? false,
         maxAttempts: json['max_attempts'] as int? ?? 1,
       );
 
@@ -51,6 +56,7 @@ class ExamSettings {
         'allow_back_navigation': allowBackNavigation,
         'auto_submit': autoSubmit,
         'secure_mode': secureMode,
+        'auto_approve_join': autoApproveJoin,
         'show_result_immediately': showResultImmediately,
         'max_attempts': maxAttempts,
       };
@@ -62,6 +68,7 @@ class ExamSettings {
     bool? autoSubmit,
     bool? secureMode,
     bool? showResultImmediately,
+    bool? autoApproveJoin,
     int? maxAttempts,
   }) =>
       ExamSettings(
@@ -71,6 +78,7 @@ class ExamSettings {
         autoSubmit: autoSubmit ?? this.autoSubmit,
         secureMode: secureMode ?? this.secureMode,
         showResultImmediately: showResultImmediately ?? this.showResultImmediately,
+        autoApproveJoin: autoApproveJoin ?? this.autoApproveJoin,
         maxAttempts: maxAttempts ?? this.maxAttempts,
       );
 }

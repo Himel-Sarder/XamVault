@@ -77,13 +77,29 @@ class AttemptService:
         if exam.status != ExamStatus.PUBLISHED:
             raise ConflictError("This exam is not open", code="exam_not_open")
 
-        # 4. A teacher has admitted this student to this sitting.
-        request = self.join_requests.get_for_student(exam_id, student.id)
-        if request is None or request.status != JoinRequestStatus.APPROVED:
-            raise PermissionDeniedError(
-                "Your teacher has not approved you for this exam yet",
-                code="not_approved",
-            )
+        # 4. A teacher has admitted this student to this sitting -- unless the exam is
+        #    set to admit anyone enrolled.
+        #
+        #    Enrolment is not waived by that setting: step 1-2 above already required
+        #    it, and this only decides whether a second gate exists. An exam nobody has
+        #    to be approved for is still an exam only its own course can sit.
+        settings = exam.settings
+        if not (settings and settings.auto_approve_join):
+            request = self.join_requests.get_for_student(exam_id, student.id)
+            if request is None or request.status != JoinRequestStatus.APPROVED:
+                raise PermissionDeniedError(
+                    "Your teacher has not approved you for this exam yet",
+                    code="not_approved",
+                )
+        else:
+            # An explicit rejection still stands. Opening the doors is not a licence to
+            # readmit somebody a teacher deliberately turned away.
+            request = self.join_requests.get_for_student(exam_id, student.id)
+            if request is not None and request.status == JoinRequestStatus.REJECTED:
+                raise PermissionDeniedError(
+                    "Your teacher has not approved you for this exam",
+                    code="not_approved",
+                )
 
         # 5-6. Inside the exam window, by the server clock.
         if exam.start_at is None or now < exam.start_at:

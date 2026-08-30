@@ -64,6 +64,11 @@ class StudentExamService:
     def _present(exam: Exam, join_status: str, now: datetime) -> StudentExamResponse:
         availability = availability_of(exam, now)
         settings = exam.settings
+        # A rejection still stands: opening the doors is not a licence to readmit
+        # somebody a teacher deliberately turned away.
+        auto_approves = bool(settings and settings.auto_approve_join) and (
+            join_status != JoinRequestStatus.REJECTED.value
+        )
         return StudentExamResponse(
             id=exam.id,
             course_id=exam.course_id,
@@ -78,11 +83,14 @@ class StudentExamService:
             question_count=len(exam.questions),
             availability=availability,
             join_request_status=join_status,
-            # Asking is only useful while the exam can still be sat, and only once.
+            # Asking is only useful while the exam can still be sat, only once, and
+            # never on an exam that admits everyone enrolled -- there is nothing to ask.
             can_request_join=(
                 availability != "closed"
+                and not auto_approves
                 and join_status in (NO_REQUEST, JoinRequestStatus.REJECTED.value)
             ),
+            admits_anyone_enrolled=auto_approves,
             settings=StudentExamSettings(
                 secure_mode=settings.secure_mode if settings else True,
                 allow_back_navigation=settings.allow_back_navigation if settings else True,

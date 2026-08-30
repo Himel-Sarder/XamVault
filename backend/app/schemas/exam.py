@@ -18,6 +18,7 @@ class ExamSettingsUpdate(BaseModel):
     auto_submit: bool | None = None
     secure_mode: bool | None = None
     show_result_immediately: bool | None = None
+    auto_approve_join: bool | None = None
     max_attempts: int | None = Field(default=None, ge=1, le=10)
 
 
@@ -28,6 +29,9 @@ class ExamSettingsResponse(ORMModel):
     auto_submit: bool
     secure_mode: bool
     show_result_immediately: bool
+
+    #: True when anyone enrolled may sit it without being admitted by hand.
+    auto_approve_join: bool
     max_attempts: int
 
 
@@ -127,4 +131,11 @@ class StudentExamResponse(BaseModel):
     availability: Literal["upcoming", "open", "closed"]
     join_request_status: Literal["none", "pending", "approved", "rejected"]
     can_request_join: bool
+
+    #: True when this exam admits anyone enrolled, so no request is needed at all.
+    #:
+    #: The client needs this to know whether to offer "Request to join" or "Start" --
+    #: without it a student on an auto-approving exam is shown a button for a step that
+    #: does not exist.
+    admits_anyone_enrolled: bool = False
     settings: StudentExamSettings

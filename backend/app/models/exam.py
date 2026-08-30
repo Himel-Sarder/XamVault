@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    false as sa_false,
     UniqueConstraint,
     func,
 )
@@ -116,6 +117,19 @@ class ExamSettings(Base):
         Boolean, nullable=False, default=False
     )
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    #: Whether an enrolled student may sit this exam without being admitted by hand.
+    #:
+    #: Manual approval is the default and stays the default: a teacher deciding who is
+    #: in the room is the safer position, and turning that off should be a deliberate
+    #: act. Auto-approval is for the ordinary case where everyone enrolled on the
+    #: course is expected to sit the paper and the approval step is only friction.
+    #:
+    #: Enrolment is still required either way. This decides whether a *second* gate
+    #: exists, not whether there is one.
+    auto_approve_join: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=sa_false()
+    )
 
     exam: Mapped["Exam"] = relationship(back_populates="settings")
 
