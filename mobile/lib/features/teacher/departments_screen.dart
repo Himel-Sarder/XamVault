@@ -67,25 +67,6 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
     }
   }
 
-  Future<void> _setActive(Department department, bool active) async {
-    setState(() => _busyId = department.id);
-    try {
-      await ref
-          .read(departmentRepositoryProvider)
-          .update(department.id, isActive: active);
-    } on ApiException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busyId = null);
-        ref.invalidate(departmentsProvider);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final departments = ref.watch(departmentsProvider);
@@ -149,7 +130,7 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
         ),
         title: Text(department.name),
         subtitle: Text(
-          department.isActive ? department.code : '${department.code} · archived',
+          department.code,
         ),
         trailing: busy
             ? const SizedBox(
@@ -157,19 +138,11 @@ class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
                 width: 20,
                 child: InlineLoader(size: 20),
               )
-            : PopupMenuButton<String>(
-                key: Key('department_menu_${department.id}'),
-                onSelected: (value) => switch (value) {
-                  'rename' => _rename(department),
-                  _ => _setActive(department, !department.isActive),
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Text(department.isActive ? 'Archive' : 'Restore'),
-                  ),
-                ],
+            : IconButton(
+                key: Key('department_rename_${department.id}'),
+                tooltip: 'Rename',
+                onPressed: () => _rename(department),
+                icon: const Icon(Icons.edit_outlined),
               ),
       ),
     );

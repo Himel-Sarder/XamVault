@@ -60,64 +60,23 @@ Widget wrap({required User as, FakeCourseRepository? courses}) => ProviderScope(
     );
 
 void main() {
-  group('finding an archived course', () {
-    testWidgets('the list can be narrowed to the archived ones', (tester) async {
-      tall(tester);
-      await tester.pumpWidget(wrap(as: _admin));
-      await tester.pumpAndSettle();
-
-      // Everything, to begin with.
-      expect(find.text('CSE-301'), findsOneWidget);
-      expect(find.text('CSE-205'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('course_filter_archived')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('CSE-301'), findsNothing);
-      expect(find.text('CSE-205'), findsOneWidget);
-    });
-
-    testWidgets('the chip says how many there are', (tester) async {
-      // Archiving used to be a one-way trip as far as the interface went: the switch
-      // was on the edit form and nothing afterwards told you what was behind it.
-      tall(tester);
-      await tester.pumpWidget(wrap(as: _admin));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Archived (1)'), findsOneWidget);
-    });
-
-    testWidgets('and to the active ones', (tester) async {
-      tall(tester);
-      await tester.pumpWidget(wrap(as: _admin));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('course_filter_active')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('CSE-301'), findsOneWidget);
-      expect(find.text('CSE-205'), findsNothing);
-    });
-
-    testWidgets('an empty archive says what archiving is for', (tester) async {
-      tall(tester);
-      await tester.pumpWidget(wrap(
-        as: _admin,
-        courses: FakeCourseRepository(courses: const [
-          Course(id: 1, courseCode: 'CSE-301', courseName: 'DBMS', createdBy: 2),
-        ]),
-      ));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('course_filter_archived')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('No archived courses'), findsOneWidget);
-      expect(find.textContaining('keeps its exams and results'), findsOneWidget);
-    });
-
-    testWidgets('a student sees no filter bar worth the room when there is one course',
+  group('the list itself', () {
+    testWidgets('it shows every course, with no archive to hide behind',
         (tester) async {
+      // Archiving was removed: a course is on the list or it is deleted, and deleting
+      // says what it would destroy first.
+      tall(tester);
+      await tester.pumpWidget(wrap(as: _admin));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CSE-301'), findsOneWidget);
+      expect(find.text('CSE-205'), findsOneWidget);
+      expect(find.byKey(const Key('course_filter_all')), findsNothing);
+      expect(find.byKey(const Key('archive_course_1')), findsNothing);
+      expect(find.text('Archived'), findsNothing);
+    });
+
+    testWidgets('an empty list is explained rather than blank', (tester) async {
       tall(tester);
       await tester.pumpWidget(wrap(
         as: _student,
@@ -125,46 +84,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Chips above an empty list are furniture, not navigation.
-      expect(find.byKey(const Key('course_filter_all')), findsNothing);
-    });
-  });
-
-  group('archiving and putting back', () {
-    testWidgets('an active course can be archived from its row', (tester) async {
-      // It used to be a switch inside the edit form: easy to do, hard to undo.
-      tall(tester);
-      final courses = mixedShelf();
-      await tester.pumpWidget(wrap(as: _admin, courses: courses));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('archive_course_1')));
-      await tester.pumpAndSettle();
-
-      expect(courses.updated.single.id, 1);
-      expect(courses.updated.single.isActive, isFalse);
-      expect(find.textContaining('archived'), findsOneWidget);
-    });
-
-    testWidgets('and an archived one put back', (tester) async {
-      tall(tester);
-      final courses = mixedShelf();
-      await tester.pumpWidget(wrap(as: _admin, courses: courses));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('archive_course_2')));
-      await tester.pumpAndSettle();
-
-      expect(courses.updated.single.isActive, isTrue);
-      expect(find.textContaining('back in use'), findsOneWidget);
-    });
-
-    testWidgets('a student is offered neither', (tester) async {
-      tall(tester);
-      await tester.pumpWidget(wrap(as: _student));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('archive_course_1')), findsNothing);
+      expect(find.text('No courses'), findsOneWidget);
     });
   });
 

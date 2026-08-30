@@ -367,25 +367,23 @@ void main() {
       await tester.pumpWidget(wrap(const DepartmentsScreen(), department: departments));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('department_menu_1')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Rename'));
+      await tester.tap(find.byKey(const Key('department_rename_1')));
       await tester.pumpAndSettle();
 
       final field = tester.widget<TextField>(find.byKey(const Key('department_code')));
       expect(field.readOnly, isTrue);
     });
 
-    testWidgets('archiving is offered instead of deleting', (tester) async {
+    testWidgets('a department can be renamed and nothing else', (tester) async {
       useTallSurface(tester);
       await tester.pumpWidget(wrap(const DepartmentsScreen()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('department_menu_1')));
-      await tester.pumpAndSettle();
-
-      // Courses and users point at a department; deleting one would strand them.
-      expect(find.text('Archive'), findsOneWidget);
+      // Archiving was removed: it hid a department without saying where it went, and
+      // deleting is not offered because courses and users point at one and would be
+      // stranded. Renaming is the whole of what a department needs.
+      expect(find.byKey(const Key('department_rename_1')), findsOneWidget);
+      expect(find.text('Archive'), findsNothing);
       expect(find.text('Delete'), findsNothing);
     });
   });

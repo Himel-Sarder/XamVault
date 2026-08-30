@@ -13,28 +13,12 @@ import 'package:uniexam/providers/course_provider.dart';
 import 'package:uniexam/providers/providers.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
-/// Which courses the list is showing.
-///
-/// Archiving used to be a one-way trip as far as the interface was concerned: the
-/// switch was on the edit form, and afterwards the course sat in the same list as
-/// everything else with a small grey pill, which is no way to find it again.
-enum CourseFilter {
-  all('All'),
-  active('Active'),
-  archived('Archived');
-
-  const CourseFilter(this.label);
-
-  final String label;
-
-  bool matches(Course course) => switch (this) {
-        CourseFilter.all => true,
-        CourseFilter.active => course.isActive,
-        CourseFilter.archived => !course.isActive,
-      };
-}
-
 /// Full course list. The backend scopes it by role, so one screen serves everyone.
+///
+/// There is no archiving here any more. It was a second, softer kind of removal that
+/// hid a course without saying where it went, and once deleting existed -- with the
+/// count of what it would destroy shown first -- keeping both meant two answers to one
+/// question. A course is on the list or it is gone.
 class CoursesScreen extends ConsumerStatefulWidget {
   const CoursesScreen({super.key, required this.title});
 
@@ -45,7 +29,6 @@ class CoursesScreen extends ConsumerStatefulWidget {
 }
 
 class _CoursesScreenState extends ConsumerState<CoursesScreen> {
-  CourseFilter _filter = CourseFilter.all;
   int? _busyId;
 
   Future<void> _confirmDelete(Course course) async {
@@ -114,36 +97,6 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
     }
   }
 
-  Future<void> _toggleArchive(Course course) async {
-    setState(() => _busyId = course.id);
-    try {
-      await ref
-          .read(courseRepositoryProvider)
-          .update(course.id, isActive: !course.isActive);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              course.isActive
-                  ? '${course.courseCode} archived. Find it under Archived.'
-                  : '${course.courseCode} is back in use.',
-            ),
-          ),
-        );
-      }
-    } on ApiException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busyId = null);
-        ref.invalidate(courseProvider);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final courses = ref.watch(courseProvider);
@@ -177,110 +130,42 @@ class _CoursesScreenState extends ConsumerState<CoursesScreen> {
           onRetry: () => ref.invalidate(courseProvider),
         ),
         data: (page) {
-          final archivedCount = page.items.where((c) => !c.isActive).length;
-          final visible = page.items.where(_filter.matches).toList();
+          if (page.items.isEmpty) {
+            return const EmptyView(
+              title: 'No courses',
+              subtitle: 'Nothing to show here yet.',
+              icon: Icons.menu_book_outlined,
+            );
+          }
 
-          return Column(
-            children: [
-              // Only once there is something to filter. A row of chips above an empty
-              // list is furniture, not navigation.
-              if (page.items.isNotEmpty)
-                _FilterBar(
-                  filter: _filter,
-                  archivedCount: archivedCount,
-                  onChanged: (value) => setState(() => _filter = value),
-                ),
-              Expanded(
-                child: visible.isEmpty
-                    ? EmptyView(
-                        title: switch (_filter) {
-                          CourseFilter.archived => 'No archived courses',
-                          CourseFilter.active => 'No active courses',
-                          CourseFilter.all => 'No courses',
-                        },
-                        subtitle: _filter == CourseFilter.archived
-                            ? 'Archiving a course keeps its exams and results, and '
-                                'moves it out of the way. Nothing has been archived yet.'
-                            : 'Nothing to show here yet.',
-                        icon: _filter == CourseFilter.archived
-                            ? Icons.inventory_2_outlined
-                            : Icons.menu_book_outlined,
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async => ref.refresh(courseProvider.future),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                          itemCount: visible.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 8),
-                          itemBuilder: (_, index) {
-                            final course = visible[index];
-                            return CourseTile(
-                              course: course,
-                              busy: _busyId == course.id,
-                              onDelete:
-                                  canDelete ? () => _confirmDelete(course) : null,
-                              onToggleArchive:
-                                  canDelete ? () => _toggleArchive(course) : null,
-                              onTap: isTeacher
-                                  ? () => context.push(Routes.teacherCourse(course.id))
-                                  // An admin's job here is who runs it and who is on
-                                  // it, so the row opens the form that holds both
-                                  // rather than jumping straight to the roll.
-                                  : (isAdmin
-                                      ? () async {
-                                          await context.push(
-                                              Routes.adminCourseEdit(course.id));
-                                          ref.invalidate(courseProvider);
-                                        }
-                                      : null),
-                            );
-                          },
-                        ),
-                      ),
-              ),
-            ],
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(courseProvider.future),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              itemCount: page.items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (_, index) {
+                final course = page.items[index];
+                return CourseTile(
+                  course: course,
+                  busy: _busyId == course.id,
+                  onDelete: canDelete ? () => _confirmDelete(course) : null,
+                  onTap: isTeacher
+                      ? () => context.push(Routes.teacherCourse(course.id))
+                      // An admin's job here is who runs it and who is on it, so the
+                      // row opens the form that holds both rather than jumping
+                      // straight to the roll.
+                      : (isAdmin
+                          ? () async {
+                              await context.push(Routes.adminCourseEdit(course.id));
+                              ref.invalidate(courseProvider);
+                            }
+                          : null),
+                );
+              },
+            ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.filter,
-    required this.archivedCount,
-    required this.onChanged,
-  });
-
-  final CourseFilter filter;
-  final int archivedCount;
-  final ValueChanged<CourseFilter> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          for (final option in CourseFilter.values) ...[
-            FilterChip(
-              key: Key('course_filter_${option.name}'),
-              label: Text(
-                // The count sits on Archived alone: it is the one an administrator is
-                // looking for, and the one they cannot otherwise see the size of.
-                option == CourseFilter.archived && archivedCount > 0
-                    ? '${option.label} ($archivedCount)'
-                    : option.label,
-              ),
-              selected: filter == option,
-              onSelected: (_) => onChanged(option),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
       ),
     );
   }

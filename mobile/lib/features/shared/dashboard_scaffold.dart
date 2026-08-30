@@ -9,7 +9,6 @@ import 'package:uniexam/models/user.dart';
 import 'package:uniexam/providers/auth_provider.dart';
 import 'package:uniexam/providers/course_provider.dart';
 import 'package:uniexam/config/theme.dart';
-import 'package:uniexam/widgets/status_pill.dart';
 import 'package:uniexam/widgets/status_views.dart';
 
 /// The shell all three dashboards share: identity header, a courses preview and the
@@ -237,7 +236,6 @@ class CourseTile extends StatelessWidget {
     required this.course,
     this.onTap,
     this.onDelete,
-    this.onToggleArchive,
     this.busy = false,
   });
 
@@ -248,10 +246,6 @@ class CourseTile extends StatelessWidget {
   /// passes nothing, so a summary row cannot destroy anything by accident.
   final VoidCallback? onDelete;
 
-  /// Archive, or put back. Archiving used to live only as a switch inside the edit
-  /// form, which made it easy to do and hard to undo -- an archived course opened the
-  /// detail screen, and the way back was three taps away in a form.
-  final VoidCallback? onToggleArchive;
   final bool busy;
 
   @override
@@ -260,7 +254,6 @@ class CourseTile extends StatelessWidget {
     // Its own colour, derived from the code, so the same course looks the same
     // everywhere and a list of six is scannable rather than six identical rows.
     final accent = context.accents.forKey(course.courseCode);
-    final archived = !course.isActive;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -309,22 +302,6 @@ class CourseTile extends StatelessWidget {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (archived)
-                    StatusPill(label: 'Archived', colour: context.status.neutral),
-                  if (onToggleArchive != null && !busy)
-                    IconButton(
-                      key: Key('archive_course_${course.id}'),
-                      tooltip: archived ? 'Put back in use' : 'Archive',
-                      onPressed: onToggleArchive,
-                      icon: Icon(
-                        archived
-                            ? Icons.unarchive_outlined
-                            : Icons.archive_outlined,
-                        color: archived
-                            ? context.status.success.foreground
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                   if (onDelete != null) ...[
                     const SizedBox(width: 4),
                     busy
@@ -343,7 +320,7 @@ class CourseTile extends StatelessWidget {
                             icon: Icon(Icons.delete_outline,
                                 color: context.status.danger.foreground),
                           ),
-                  ] else if (!archived && onTap != null)
+                  ] else if (onTap != null)
                     Icon(Icons.chevron_right,
                         color: theme.colorScheme.onSurfaceVariant),
                 ],

@@ -38,7 +38,6 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
   int? _departmentId;
   int? _studyYear;
   int? _semester;
-  bool _isActive = true;
   String? _teacherName;
   bool _saving = false;
   bool _loaded = false;
@@ -61,7 +60,6 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
     _departmentId = course.departmentId;
     _studyYear = course.studyYear;
     _semester = course.semester;
-    _isActive = course.isActive;
     _teacherName = course.teacherName;
   }
 
@@ -82,7 +80,6 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
           studyYear: _studyYear,
           semester: _semester,
           session: session.isEmpty ? null : session,
-          isActive: _isActive,
         );
         refreshCourse(ref, widget.courseId!);
       } else {
@@ -272,19 +269,6 @@ class _CourseFormScreenState extends ConsumerState<CourseFormScreen> {
                     ),
                   );
                 },
-              ),
-            ],
-            if (widget.isEditing) ...[
-              const SizedBox(height: 8),
-              SwitchListTile(
-                key: const Key('course_active'),
-                value: _isActive,
-                onChanged: (value) => setState(() => _isActive = value),
-                title: const Text('Active'),
-                subtitle: const Text(
-                  'An archived course keeps its exams and results, and stops appearing '
-                  'in the active list.',
-                ),
               ),
             ],
             if (_error != null) ...[
