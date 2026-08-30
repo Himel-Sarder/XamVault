@@ -69,18 +69,46 @@ class _ResultCardState extends ConsumerState<_ResultCard> {
     setState(() => _exporting = true);
     try {
       final file = await ref.read(studentRepositoryProvider).resultPdf(result.id);
-      await saveFile(
+      final saved = await saveFile(
         bytes: file.bytes,
         filename: file.filename,
         mimeType: 'application/pdf',
       );
+      _announce(saved, 'application/pdf');
     } on ApiException catch (error) {
+      _tell(error.message);
+    } on FileSaveException catch (error) {
       _tell(error.message);
     } on UnsupportedError catch (error) {
       _tell(error.message ?? 'Saving files is not available on this platform yet');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
+  }
+
+
+  /// Says where the file went, and offers to open it.
+  ///
+  /// "Saved" on its own leaves a person hunting through a file manager; the folder and
+  /// the name it actually got are the useful part. The action only appears where the
+  /// platform gave us something openable.
+  void _announce(SavedFile saved, String mimeType) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved to ${saved.location}'),
+        duration: const Duration(seconds: 6),
+        action: saved.canOpen
+            ? SnackBarAction(
+                label: 'Open',
+                onPressed: () async {
+                  final opened = await openSavedFile(saved, mimeType);
+                  if (!opened) _tell('Nothing on this device opens that kind of file');
+                },
+              )
+            : null,
+      ),
+    );
   }
 
   void _tell(String message) {

@@ -19,8 +19,10 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     private lateinit var lockdown: ExamLockdown
+    private lateinit var files: FileExport
     private var control: MethodChannel? = null
     private var events: MethodChannel? = null
+    private var exports: MethodChannel? = null
 
     /** Set while an exam is running, so lifecycle noise outside an exam is ignored. */
     private var examRunning = false
@@ -35,9 +37,37 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         lockdown = ExamLockdown(this)
+        files = FileExport(this)
 
         control = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CONTROL_CHANNEL)
         events = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
+        exports = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EXPORT_CHANNEL)
+
+        exports?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "save" -> {
+                    val bytes = call.argument<ByteArray>("bytes")
+                    val filename = call.argument<String>("filename")
+                    val mimeType = call.argument<String>("mimeType")
+                    if (bytes == null || filename == null || mimeType == null) {
+                        result.error("bad_request", "bytes, filename and mimeType are required", null)
+                    } else {
+                        try {
+                            result.success(files.save(bytes, filename, mimeType))
+                        } catch (error: Exception) {
+                            // The message reaches a snackbar, so it has to be readable.
+                            result.error("save_failed", error.message ?: "Could not save the file", null)
+                        }
+                    }
+                }
+                "open" -> {
+                    val uri = call.argument<String>("uri")
+                    val mimeType = call.argument<String>("mimeType") ?: "*/*"
+                    result.success(uri != null && files.open(uri, mimeType))
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         control?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -202,5 +232,6 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CONTROL_CHANNEL = "com.uniexam/exam_security"
         private const val EVENT_CHANNEL = "com.uniexam/exam_events"
+        private const val EXPORT_CHANNEL = "com.uniexam/file_export"
     }
 }

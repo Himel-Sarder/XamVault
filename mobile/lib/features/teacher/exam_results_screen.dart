@@ -29,14 +29,18 @@ class _ExamResultsScreenState extends ConsumerState<ExamResultsScreen> {
       final file = kind == 'pdf'
           ? await repository.examPdf(widget.examId)
           : await repository.examExcel(widget.examId);
-      await saveFile(
+      final mimeType = kind == 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      final saved = await saveFile(
         bytes: file.bytes,
         filename: file.filename,
-        mimeType: kind == 'pdf'
-            ? 'application/pdf'
-            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        mimeType: mimeType,
       );
+      _announce(saved, mimeType);
     } on ApiException catch (error) {
+      _tell(error.message);
+    } on FileSaveException catch (error) {
       _tell(error.message);
     } on UnsupportedError catch (error) {
       // Said plainly rather than failing silently on a platform that cannot save yet.
@@ -44,6 +48,31 @@ class _ExamResultsScreenState extends ConsumerState<ExamResultsScreen> {
     } finally {
       if (mounted) setState(() => _exporting = null);
     }
+  }
+
+
+  /// Says where the file went, and offers to open it.
+  ///
+  /// "Saved" on its own leaves a person hunting through a file manager; the folder and
+  /// the name it actually got are the useful part. The action only appears where the
+  /// platform gave us something openable.
+  void _announce(SavedFile saved, String mimeType) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved to ${saved.location}'),
+        duration: const Duration(seconds: 6),
+        action: saved.canOpen
+            ? SnackBarAction(
+                label: 'Open',
+                onPressed: () async {
+                  final opened = await openSavedFile(saved, mimeType);
+                  if (!opened) _tell('Nothing on this device opens that kind of file');
+                },
+              )
+            : null,
+      ),
+    );
   }
 
   void _tell(String message) {
