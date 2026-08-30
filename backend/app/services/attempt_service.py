@@ -534,10 +534,18 @@ class AttemptService:
             awarded = Decimal(str(answer.marks_awarded))
             if kind in CHOICE_QUESTION_TYPES:
                 totals["mcq"] += awarded
-            elif kind == QuestionType.SHORT_ANSWER:
-                totals["short"] += awarded
             elif kind == QuestionType.CODE_ANSWER:
                 totals["code"] += awarded
+            else:
+                # Everything else marked by hand -- a typed short answer, or a
+                # photograph of work done on paper -- counts as written.
+                #
+                # An else rather than one more elif. The chain used to name each type
+                # it accepted, so PHOTO_ANSWER, added to the manually marked types
+                # later, matched none of them: a teacher could award marks, see them
+                # stored against the answer, and watch the total stay at zero. A type
+                # this code has not heard of must land somewhere, not nowhere.
+                totals["short"] += awarded
 
         total = totals["mcq"] + totals["short"] + totals["code"]
         possible = exam.total_marks or 0

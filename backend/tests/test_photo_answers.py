@@ -229,3 +229,74 @@ def test_the_marker_sees_the_photographs(
     # Nothing can mark a photograph of handwriting but a person, so it waits for one.
     assert answer["status"] == "pending"
     assert len(answer["answer_image_urls"]) == 2
+
+
+# ------------------------------------------------------- marking, and the total
+
+
+def test_marking_a_photo_answer_reaches_the_result(
+    client, api, auth_headers, teacher, student, photo_exam, sitting
+):
+    """The mark a teacher awards has to arrive in the total.
+
+    PHOTO_ANSWER was added to the manually marked types, so it reached the queue and
+    accepted a mark -- but the total was rebuilt by an if/elif over the other types,
+    and a photo answer matched none of them. The mark was stored on the answer and
+    then silently added to nothing.
+    """
+    attempt, question_id = sitting
+    headers = auth_headers(student)
+    assert _add_photo(client, api, headers, attempt["id"], question_id).status_code == 201
+    assert client.post(
+        f"{api}/attempts/{attempt['id']}/submit", headers=headers
+    ).status_code == 200
+
+    teacher_headers = auth_headers(teacher)
+    queue = client.get(
+        f"{api}/attempts/{attempt['id']}/grading", headers=teacher_headers
+    )
+    assert queue.status_code == 200, queue.text
+    pending = queue.json()["answers"]
+    assert len(pending) == 1, "a photographed answer needs a person to mark it"
+
+    marked = client.post(
+        f"{api}/attempts/{attempt['id']}/answers/{pending[0]['answer_id']}/evaluate",
+        headers=teacher_headers,
+        json={"marks_awarded": 7, "feedback": "Clear working"},
+    )
+    assert marked.status_code == 200, marked.text
+
+    results = client.get(
+        f"{api}/exams/{photo_exam.id}/results", headers=teacher_headers
+    )
+    assert results.status_code == 200, results.text
+    row = results.json()[0]
+    assert float(row["total_score"]) == 7.0, "the awarded mark must reach the total"
+    assert float(row["percentage"]) == 70.0
+
+
+def test_the_student_sees_the_mark_once_it_is_released(
+    client, api, auth_headers, teacher, student, photo_exam, sitting
+):
+    attempt, question_id = sitting
+    headers = auth_headers(student)
+    _add_photo(client, api, headers, attempt["id"], question_id)
+    client.post(f"{api}/attempts/{attempt['id']}/submit", headers=headers)
+
+    teacher_headers = auth_headers(teacher)
+    pending = client.get(
+        f"{api}/attempts/{attempt['id']}/grading", headers=teacher_headers
+    ).json()["answers"]
+    client.post(
+        f"{api}/attempts/{attempt['id']}/answers/{pending[0]['answer_id']}/evaluate",
+        headers=teacher_headers,
+        json={"marks_awarded": 9},
+    )
+    released = client.post(
+        f"{api}/exams/{photo_exam.id}/results/publish", headers=teacher_headers
+    )
+    assert released.status_code == 200, released.text
+
+    mine = client.get(f"{api}/results", headers=headers)
+    assert mine.status_code == 200, mine.text
+    assert float(mine.json()[0]["total_score"]) == 9.0
