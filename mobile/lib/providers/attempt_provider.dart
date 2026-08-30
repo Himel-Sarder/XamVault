@@ -114,22 +114,38 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
     );
   }
 
+  /// Turns on whatever device protection this exam asked for.
+  ///
+  /// Nothing in here may stop the exam opening. Locking the device down is a deterrent
+  /// on hardware the university does not control; a paper that refuses to start is a
+  /// student who cannot sit it. So every failure -- a platform that says no, a channel
+  /// that is not there, an exception nobody predicted -- is recorded and swallowed, and
+  /// the attempt loads regardless.
   Future<LockdownStatus?> _engageLockdown(Attempt attempt) async {
     if (!attempt.secureMode) return null;
-    final security = ref.read(examSecurityProvider);
 
-    security.startListening();
-    _observations = security.observations.listen(_queueEvent);
+    try {
+      final security = ref.read(examSecurityProvider);
 
-    final status = await security.enter();
-    // Record what actually happened, including that nothing did. A teacher reading the
-    // trail should be able to see that an exam ran without device protection.
-    _queueEvent(
-      status.isFullyLocked || status.blocksScreenCapture
-          ? SecurityObservation('LOCKDOWN_ENGAGED', {'detail': status.detail})
-          : SecurityObservation('LOCKDOWN_UNAVAILABLE', {'detail': status.detail}),
-    );
-    return status;
+      security.startListening();
+      _observations = security.observations.listen(_queueEvent);
+
+      final status = await security.enter();
+      // Record what actually happened, including that nothing did. A teacher reading
+      // the trail should be able to see that an exam ran without device protection.
+      _queueEvent(
+        status.isFullyLocked || status.blocksScreenCapture
+            ? SecurityObservation('LOCKDOWN_ENGAGED', {'detail': status.detail})
+            : SecurityObservation('LOCKDOWN_UNAVAILABLE', {'detail': status.detail}),
+      );
+      return status;
+    } catch (error) {
+      _queueEvent(SecurityObservation(
+        'LOCKDOWN_UNAVAILABLE',
+        {'detail': 'The device refused to lock down: $error'},
+      ));
+      return const LockdownStatus.unavailable('The device refused to lock down');
+    }
   }
 
   void _queueEvent(SecurityObservation observation) {

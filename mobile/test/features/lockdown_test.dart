@@ -11,7 +11,7 @@ import 'fakes.dart';
 Widget wrap(
   Widget child, {
   required FakeStudentRepository student,
-  required FakeExamSecurity security,
+  required ExamSecurity security,
 }) {
   return ProviderScope(
     overrides: [
@@ -227,6 +227,49 @@ void main() {
       // A student must never be left pinned inside a finished exam. What the closing
       // screen then renders is attempt_flow_test's business, not this test's.
       expect(security.exitCalls, 1);
+    });
+  });
+
+  group('when the device refuses', () {
+    testWidgets('the exam still opens', (tester) async {
+      // A paper that will not start is worse than a paper that starts unpinned.
+      // Lockdown is a deterrent on hardware the university does not control; it is
+      // never a precondition for sitting the exam.
+      useTallSurface(tester);
+      final student = FakeStudentRepository()
+        ..currentAttempt = buildAttempt(secureMode: true);
+      final security = ThrowingExamSecurity();
+
+      await tester.pumpWidget(wrap(
+        const ExamAttemptScreen(attemptId: 900),
+        student: student,
+        security: security,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Question 1'), findsWidgets);
+    });
+
+    testWidgets('and says so rather than claiming protection it does not have',
+        (tester) async {
+      useTallSurface(tester);
+      final student = FakeStudentRepository()
+        ..currentAttempt = buildAttempt(secureMode: true);
+
+      await tester.pumpWidget(wrap(
+        const ExamAttemptScreen(attemptId: 900),
+        student: student,
+        security: ThrowingExamSecurity(),
+      ));
+      await tester.pumpAndSettle();
+      // Observations are batched behind a two-second debounce, so one report carries
+      // several events instead of one request per twitch.
+      await tester.pump(const Duration(seconds: 3));
+
+      expect(
+        student.reportedEvents.any((e) => e.eventType == 'LOCKDOWN_UNAVAILABLE'),
+        isTrue,
+      );
     });
   });
 }

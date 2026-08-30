@@ -1716,3 +1716,29 @@ class FakeSettingsRepository implements SettingsRepository {
     return AppSettings(universityName: name);
   }
 }
+
+/// A device that refuses to lock down, in the rudest way available: by throwing.
+///
+/// The platform channel can fail in ways no one anticipated, and the exam has to open
+/// anyway -- so the fake models the unanticipated one.
+class ThrowingExamSecurity implements ExamSecurity {
+  final _controller = StreamController<SecurityObservation>.broadcast();
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Stream<SecurityObservation> get observations => _controller.stream;
+
+  @override
+  void startListening() {}
+
+  @override
+  Future<LockdownStatus> enter() async => throw StateError('lock task refused');
+
+  @override
+  Future<void> exit() async {}
+
+  @override
+  void dispose() => _controller.close();
+}

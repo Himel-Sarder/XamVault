@@ -36,6 +36,9 @@ class ExamLockdown(private val activity: Activity) {
 
     private var engaged = false
 
+    /** Set when [enter] could not pin because the activity was not yet resumed. */
+    private var pendingPin = false
+
     /** Result of an attempt to lock down, reported verbatim to Flutter. */
     data class Status(
         val secureFlag: Boolean,
@@ -53,15 +56,41 @@ class ExamLockdown(private val activity: Activity) {
         )
     }
 
-    fun enter(): Status {
+    /**
+     * @param pinNow whether the activity is resumed and can therefore be pinned.
+     *
+     * Flutter engages lockdown while the exam route is still being built, which is
+     * before the activity has settled. `startLockTask` from an activity that is not
+     * resumed is refused by the platform, and on some devices the refusal takes the
+     * task down with it -- the student taps Start and is put out of the app.
+     *
+     * So the screenshot block and fullscreen go on immediately, which are safe at any
+     * time, and the pin waits for [pinIfPending]. The exam opens either way: a paper
+     * that will not start is worse than a paper that starts unpinned, and the status
+     * returned says which one happened.
+     */
+    fun enter(pinNow: Boolean): Status {
         val secure = applySecureFlag(true)
         val immersive = applyImmersive(true)
-        val (locked, pinning, detail) = startLockTask()
         engaged = true
+
+        if (!pinNow) {
+            pendingPin = true
+            return Status(secure, immersive, false, false, "Waiting for the exam to be on screen")
+        }
+        val (locked, pinning, detail) = startLockTask()
         return Status(secure, immersive, locked, pinning, detail)
     }
 
+    /** Takes the pin once the activity is resumed, if [enter] had to defer it. */
+    fun pinIfPending(): Boolean {
+        if (!engaged || !pendingPin) return false
+        pendingPin = false
+        return startLockTask().first
+    }
+
     fun exit(): Status {
+        pendingPin = false
         stopLockTask()
         val secure = applySecureFlag(false)
         val immersive = applyImmersive(false)

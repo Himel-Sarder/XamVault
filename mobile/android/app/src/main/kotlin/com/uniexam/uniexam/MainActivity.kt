@@ -31,6 +31,9 @@ class MainActivity : FlutterActivity() {
     /** Reported once per exam: a hundred rows saying the same thing help nobody. */
     private var overlayReported = false
 
+    /** Whether the activity is between onResume and onPause right now. */
+    private var resumed = false
+
 
 
 
@@ -77,7 +80,9 @@ class MainActivity : FlutterActivity() {
                 "enterExamLockdown" -> {
                     examRunning = true
                     registerWatchers()
-                    val status = lockdown.enter()
+                    // Pinning only works from a resumed activity, and Flutter calls
+                    // this while the exam route is still being built.
+                    val status = lockdown.enter(resumed)
                     // Report the room as well as the lockdown: developer mode, USB
                     // debugging, split screen and a second display are all things the
                     // device can see and none it can stop.
@@ -114,6 +119,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onPause() {
         super.onPause()
+        resumed = false
         if (examRunning) {
             backgroundedAt = System.currentTimeMillis()
             report("APP_BACKGROUND", emptyMap())
@@ -122,6 +128,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
+        // If lockdown was asked for before the exam was on screen, take the pin now.
+        if (examRunning) lockdown.pinIfPending()
         if (examRunning) {
             val away = backgroundedAt?.let { System.currentTimeMillis() - it }
             backgroundedAt = null
