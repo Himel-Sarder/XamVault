@@ -115,6 +115,38 @@ class ExamSecurity {
     }
   }
 
+  /// Lets the app send the student to another app on purpose, and take the lock back.
+  ///
+  /// A pinned app cannot launch the camera -- Android refuses to bring another
+  /// activity forward, and the student sees the exam apparently close and reopen. A
+  /// PHOTO_ANSWER question needs that launch, so the pin is released around it.
+  ///
+  /// Returns whether anything was actually released, which is false when no lockdown
+  /// was engaged in the first place.
+  Future<bool> beginExcursion() async {
+    if (!isSupported) return false;
+    try {
+      return await _control.invokeMethod<bool>('beginExcursion') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Retakes the lock after an excursion. False if it could not be regained -- worth
+  /// knowing, but never worth blocking the student's answer over.
+  Future<bool> endExcursion() async {
+    if (!isSupported) return false;
+    try {
+      return await _control.invokeMethod<bool>('endExcursion') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   Future<void> exit() async {
     if (!isSupported) return;
     try {

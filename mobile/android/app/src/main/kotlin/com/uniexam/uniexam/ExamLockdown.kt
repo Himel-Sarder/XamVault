@@ -69,6 +69,31 @@ class ExamLockdown(private val activity: Activity) {
         return Status(!secure, !immersive, false, false, "Lockdown released")
     }
 
+    /**
+     * Steps out of lock task so the app can launch another one, and comes back.
+     *
+     * A pinned app cannot start the camera: Android refuses to bring another activity
+     * to the front, and what the student sees is the exam apparently closing and
+     * reopening. A PHOTO_ANSWER question requires exactly that launch, so the pin is
+     * released for the length of the excursion and taken again afterwards.
+     *
+     * `FLAG_SECURE` is deliberately left on throughout. It is the one protection the
+     * platform genuinely enforces on an unmanaged device, and there is no reason to
+     * drop it while the camera is open.
+     */
+    fun suspendForExcursion(): Boolean {
+        if (!engaged) return false
+        stopLockTask()
+        return true
+    }
+
+    /** Retakes the pin after an excursion. Reports whether it actually got it back. */
+    fun resumeAfterExcursion(): Boolean {
+        if (!engaged) return false
+        val (locked, _, _) = startLockTask()
+        return locked
+    }
+
     fun isEngaged(): Boolean = engaged
 
     /**

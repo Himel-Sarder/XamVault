@@ -296,6 +296,12 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
     final view = state.valueOrNull;
     if (view == null || view.isFinished || view.capturingQuestionId != null) return;
 
+    // The exam is pinned to the screen, and a pinned app cannot bring the camera
+    // forward -- Android refuses, and the student sees the exam close and reopen. Step
+    // out of the lock deliberately, and step back into it whatever happens next.
+    final security = ref.read(examSecurityProvider);
+    await security.beginExcursion();
+
     final XFile? shot;
     try {
       shot = await ImagePicker().pickImage(
@@ -305,11 +311,15 @@ class AttemptController extends AutoDisposeFamilyAsyncNotifier<AttemptView, int>
       );
     } catch (_) {
       // No camera, or permission refused. Said plainly rather than as a dead button.
+      await security.endExcursion();
       state = AsyncData(view.copyWith(
         error: 'Could not open the camera. Check the app has permission to use it.',
       ));
       return;
     }
+    // Back in the exam: retake the lock before anything else, including on the path
+    // where the student backed out of the camera without taking a picture.
+    await security.endExcursion();
     if (shot == null) return;
 
     state = AsyncData(view.copyWith(

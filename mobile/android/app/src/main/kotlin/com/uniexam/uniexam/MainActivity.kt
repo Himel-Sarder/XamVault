@@ -31,6 +31,17 @@ class MainActivity : FlutterActivity() {
     /** Reported once per exam: a hundred rows saying the same thing help nobody. */
     private var overlayReported = false
 
+    /**
+     * Set while the app itself has sent the student to another app -- the camera, for a
+     * PHOTO_ANSWER question.
+     *
+     * The lifecycle events that follow are the app's own doing, so reporting them as
+     * "the student left the exam" would put a misleading line in front of an
+     * invigilator. The platform does not accuse; it certainly must not accuse someone
+     * of something it asked them to do.
+     */
+    private var inSanctionedExcursion = false
+
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var timeChangeReceiver: android.content.BroadcastReceiver? = null
 
@@ -87,6 +98,16 @@ class MainActivity : FlutterActivity() {
                     unregisterWatchers()
                     result.success(lockdown.exit().toMap())
                 }
+                "beginExcursion" -> {
+                    // The camera cannot come to the front while the app is pinned.
+                    inSanctionedExcursion = true
+                    result.success(lockdown.suspendForExcursion())
+                }
+                "endExcursion" -> {
+                    val regained = lockdown.resumeAfterExcursion()
+                    inSanctionedExcursion = false
+                    result.success(regained)
+                }
                 "isSupported" -> result.success(true)
                 "isDeviceOwner" -> result.success(lockdown.isDeviceOwner())
                 "isEngaged" -> result.success(lockdown.isEngaged())
@@ -111,7 +132,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (examRunning) {
+        if (examRunning && !inSanctionedExcursion) {
             backgroundedAt = System.currentTimeMillis()
             report("APP_BACKGROUND", emptyMap())
         }
@@ -119,7 +140,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (examRunning) {
+        if (examRunning && !inSanctionedExcursion) {
             val away = backgroundedAt?.let { System.currentTimeMillis() - it }
             backgroundedAt = null
             report("APP_FOREGROUND", if (away != null) mapOf("away_ms" to away) else emptyMap())

@@ -1399,6 +1399,14 @@ class FakeExamSecurity implements ExamSecurity {
   int exitCalls = 0;
   bool listening = false;
 
+  /// Every excursion, in order: true for begin, false for end. A test can then assert
+  /// the camera was never opened while the screen was still pinned.
+  final List<bool> excursions = [];
+
+  /// Whether the lock is currently held. Starts held, because [enter] is what a test
+  /// calls first.
+  bool locked = true;
+
   /// Push an observation as if Android had reported it.
   void emit(SecurityObservation observation) => _controller.add(observation);
 
@@ -1410,6 +1418,20 @@ class FakeExamSecurity implements ExamSecurity {
 
   @override
   void startListening() => listening = true;
+
+  @override
+  Future<bool> beginExcursion() async {
+    excursions.add(true);
+    locked = false;
+    return true;
+  }
+
+  @override
+  Future<bool> endExcursion() async {
+    excursions.add(false);
+    locked = true;
+    return true;
+  }
 
   @override
   Future<LockdownStatus> enter() async {
